@@ -1,0 +1,14 @@
+# Core
+fastapi
+uvicorn
+
+# Azure
+azure-functions
+azure-storage-blob
+
+# Data Processing
+pandas
+apache-avro
+
+# Development
+python-dotenv
