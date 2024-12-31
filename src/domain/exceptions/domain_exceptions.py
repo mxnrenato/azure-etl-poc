@@ -25,3 +25,7 @@ class BackupError(DomainException):
 class RestoreError(DomainException):
     """Raised when restore operation fails"""
     pass
+
+class IngestError(Exception):
+    """Custom exception for errors during ingestion."""
+    pass
