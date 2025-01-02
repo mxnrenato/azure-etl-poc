@@ -7,6 +7,7 @@ import avro.schema
 from avro.datafile import DataFileWriter, DataFileReader
 from avro.io import DatumWriter, DatumReader
 
+
 class AzureSQLEmployeeRepository(EmployeeRepository):
     def __init__(self, connection_string: str):
         self.connection_string = connection_string
@@ -15,16 +16,19 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
         try:
             with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO employees (id, name, hire_datetime, department_id, job_id)
                     VALUES (?, ?, ?, ?, ?)
-                """, (
-                    employee.id,
-                    employee.name,
-                    employee.hire_datetime,
-                    employee.department_id,
-                    employee.job_id
-                ))
+                """,
+                    (
+                        employee.id,
+                        employee.name,
+                        employee.hire_datetime,
+                        employee.department_id,
+                        employee.job_id,
+                    ),
+                )
                 return True
         except Exception as e:
             print(f"Error saving employee: {str(e)}")
@@ -36,16 +40,19 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
             cursor = conn.cursor()
             for employee in employees:
                 try:
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         INSERT INTO employees (id, name, hire_datetime, department_id, job_id)
                         VALUES (?, ?, ?, ?, ?)
-                    """, (
-                        employee.id,
-                        employee.name,
-                        employee.hire_datetime,
-                        employee.department_id,
-                        employee.job_id
-                    ))
+                    """,
+                        (
+                            employee.id,
+                            employee.name,
+                            employee.hire_datetime,
+                            employee.department_id,
+                            employee.job_id,
+                        ),
+                    )
                     results.append(True)
                 except Exception as e:
                     print(f"Error in batch save: {str(e)}")
@@ -61,28 +68,36 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
 
                 # Define AVRO schema
                 schema = {
-                    'name': 'Employee',
-                    'type': 'record',
-                    'fields': [
-                        {'name': 'id', 'type': 'int'},
-                        {'name': 'name', 'type': 'string'},
-                        {'name': 'hire_datetime', 'type': 'string'},
-                        {'name': 'department_id', 'type': 'int'},
-                        {'name': 'job_id', 'type': 'int'}
-                    ]
+                    "name": "Employee",
+                    "type": "record",
+                    "fields": [
+                        {"name": "id", "type": "int"},
+                        {"name": "name", "type": "string"},
+                        {"name": "hire_datetime", "type": "string"},
+                        {"name": "department_id", "type": "int"},
+                        {"name": "job_id", "type": "int"},
+                    ],
                 }
 
                 # Write to AVRO file
-                backup_path = f"backups/employees_{datetime.now().strftime('%Y%m%d_%H%M%S')}.avro"
-                with DataFileWriter(open(backup_path, "wb"), DatumWriter(), avro.schema.parse(str(schema))) as writer:
+                backup_path = (
+                    f"backups/employees_{datetime.now().strftime('%Y%m%d_%H%M%S')}.avro"
+                )
+                with DataFileWriter(
+                    open(backup_path, "wb"),
+                    DatumWriter(),
+                    avro.schema.parse(str(schema)),
+                ) as writer:
                     for row in rows:
-                        writer.append({
-                            'id': row.id,
-                            'name': row.name,
-                            'hire_datetime': row.hire_datetime.isoformat(),
-                            'department_id': row.department_id,
-                            'job_id': row.job_id
-                        })
+                        writer.append(
+                            {
+                                "id": row.id,
+                                "name": row.name,
+                                "hire_datetime": row.hire_datetime.isoformat(),
+                                "department_id": row.department_id,
+                                "job_id": row.job_id,
+                            }
+                        )
 
                 return backup_path
         except Exception as e:
@@ -99,19 +114,22 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
             with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
                 cursor.execute("TRUNCATE TABLE employees")  # Clear existing data
-                
+
                 for emp in employees:
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         INSERT INTO employees (id, name, hire_datetime, department_id, job_id)
                         VALUES (?, ?, ?, ?, ?)
-                    """, (
-                        emp['id'],
-                        emp['name'],
-                        emp['hire_datetime'],
-                        emp['department_id'],
-                        emp['job_id']
-                    ))
-                
+                    """,
+                        (
+                            emp["id"],
+                            emp["name"],
+                            emp["hire_datetime"],
+                            emp["department_id"],
+                            emp["job_id"],
+                        ),
+                    )
+
                 return True
         except Exception as e:
             print(f"Error restoring backup: {str(e)}")

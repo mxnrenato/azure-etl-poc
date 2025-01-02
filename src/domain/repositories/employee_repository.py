@@ -5,6 +5,7 @@ from abc import abstractmethod
 from typing import List
 import datetime
 
+
 class EmployeeRepository(BaseRepository[Employee]):
     @abstractmethod
     async def find_by_department(self, department_id: int) -> List[Employee]:
@@ -15,5 +16,7 @@ class EmployeeRepository(BaseRepository[Employee]):
         pass
 
     @abstractmethod
-    async def find_by_hire_date_range(self, start_date: datetime, end_date: datetime) -> List[Employee]:
+    async def find_by_hire_date_range(
+        self, start_date: datetime, end_date: datetime
+    ) -> List[Employee]:
         pass
