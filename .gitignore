@@ -1,0 +1,9 @@
+# Python environment
+venv/
+.venv/
+__pycache__/
+# IDE Configurations
+.vscode/
+
+# OS specific
+.DS_Store
