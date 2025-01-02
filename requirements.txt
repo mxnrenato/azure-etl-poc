@@ -5,6 +5,7 @@ asttokens==3.0.0
 autopep8==2.3.1
 avro-python3==1.10.2
 azure-core==1.32.0
+azure-functions==1.21.3
 azure-monitor-opentelemetry-exporter==1.0.0b32
 azure-monitor-query==1.4.0
 azure-storage-blob==12.24.0
@@ -64,6 +65,7 @@ Pygments==2.18.0
 pyodbc==5.2.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
+python-multipart==0.0.20
 pyzmq==26.2.0
 requests==2.32.3
 requests-oauthlib==2.0.0
@@ -76,6 +78,7 @@ tqdm==4.67.1
 traitlets==5.14.3
 typing_extensions==4.12.2
 urllib3==2.3.0
+uvicorn==0.34.0
 wcwidth==0.2.13
 wrapt==1.17.0
 zipp==3.21.0
