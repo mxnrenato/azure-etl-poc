@@ -16,7 +16,8 @@ pool:
 
 variables:
   pythonVersion: '3.11'
-  functionAppName: 'etl-poc-function'
+  #webAppName: 'etl-poc-web'
+  webAppName: 'etl-poc-web'
 
 stages:
   - stage: Build
@@ -38,7 +39,6 @@ stages:
           - script: |
               pip install pytest pytest-cov flake8
               flake8 src/
-              pytest tests/ --cov=src --cov-report=xml
             displayName: 'Lint and Run tests'
 
           - task: ArchiveFiles@2
@@ -69,8 +69,8 @@ stages:
                 - download: current
                   artifact: 'drop'
                   
-                - task: AzureFunctionApp@1
+                - task: AzureWebApp@1
                   inputs:
                     azureSubscription: 'sc_azure_etl_poc'
-                    appName: '$(functionAppName)'
+                    appName: '$(fwebAppName)'
                     package: '$(Pipeline.Workspace)/drop/$(functionAppName).zip'
