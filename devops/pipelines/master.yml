@@ -1,0 +1,76 @@
+trigger:
+  branches:
+    include:
+      - master
+    exclude:
+      - feature/*
+      - hotfix/*
+
+pr:
+  branches:
+    include:
+      - master
+
+pool:
+  name: Default
+
+variables:
+  pythonVersion: '3.11.10'
+  functionAppName: 'etl-poc-function'
+
+stages:
+  - stage: Build
+    jobs:
+      - job: Build
+        steps:
+          - checkout: self
+            
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '$(pythonVersion)'
+            displayName: 'Use Python $(pythonVersion)'
+
+          - script: |
+              python -m pip install --upgrade pip
+              pip install -r requirements.txt
+            displayName: 'Install dependencies'
+
+          - script: |
+              pip install pytest pytest-cov flake8
+              flake8 src/
+              pytest tests/ --cov=src --cov-report=xml
+            displayName: 'Lint and Run tests'
+
+          - task: ArchiveFiles@2
+            inputs:
+              rootFolderOrFile: '$(System.DefaultWorkingDirectory)/src'
+              includeRootFolder: false
+              archiveType: 'zip'
+              archiveFile: '$(Build.ArtifactStagingDirectory)/$(functionAppName).zip'
+              replaceExistingArchive: true
+            displayName: 'Create deployment package'
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              pathToPublish: '$(Build.ArtifactStagingDirectory)'
+              artifactName: 'drop'
+            displayName: 'Publish artifacts'
+
+  - stage: Deploy_Prod
+    jobs:
+      - deployment: Deploy
+        environment: 'production'
+        pool:
+          name: Default
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: 'drop'
+                  
+                - task: AzureFunctionApp@1
+                  inputs:
+                    azureSubscription: 'sc_azure_etl_poc'
+                    appName: '$(functionAppName)-prod'
+                    package: '$(Pipeline.Workspace)/drop/$(functionAppName).zip'
