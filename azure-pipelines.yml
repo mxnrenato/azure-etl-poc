@@ -15,7 +15,7 @@ pr:
       - master
 
 pool:
-  vmImage: 'ubuntu-latest'
+  name: Default
 
 variables:
   pythonVersion: '3.9'
@@ -26,9 +26,7 @@ stages:
     jobs:
       - job: Build
         steps:
-          # Explícito checkout del repositorio
           - checkout: self
-            fetchDepth: 1
             
           - task: UsePythonVersion@0
             inputs:
@@ -45,12 +43,6 @@ stages:
               flake8 src/
               pytest tests/ --cov=src --cov-report=xml
             displayName: 'Lint and Run tests'
-
-          - task: PublishCodeCoverageResults@1
-            inputs:
-              codeCoverageTool: Cobertura
-              summaryFileLocation: '$(System.DefaultWorkingDirectory)/coverage.xml'
-            displayName: 'Publish code coverage'
 
           - task: ArchiveFiles@2
             inputs:
@@ -72,13 +64,12 @@ stages:
     jobs:
       - deployment: Deploy
         environment: development
+        pool:
+          name: Default
         strategy:
           runOnce:
             deploy:
               steps:
-                - checkout: self
-                  fetchDepth: 1
-
                 - download: current
                   artifact: 'drop'
                   
@@ -93,13 +84,12 @@ stages:
     jobs:
       - deployment: Deploy
         environment: 'production'
+        pool:
+          name: Default
         strategy:
           runOnce:
             deploy:
               steps:
-                - checkout: self
-                  fetchDepth: 1
-
                 - download: current
                   artifact: 'drop'
                   
