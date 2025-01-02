@@ -79,51 +79,50 @@ class IngestService:
     ) -> tuple[list[Employee], list[dict]]:
         """Process and validate employee data from CSV file"""
         try:
-            file_content.seek(0)
+            # Leer archivo CSV
+            file_content.seek(0)  # Asegurarse de leer desde el inicio
             df = pd.read_csv(StringIO(file_content.read().decode("utf-8")))
 
+            # Validar columnas obligatorias
             required_columns = ["id", "name", "datetime", "department_id", "job_id"]
             if not all(col in df.columns for col in required_columns):
                 raise ValueError(
                     "Archivo CSV no contiene todas las columnas requeridas"
                 )
 
+            # Validar filas y crear objetos Employee
             employees = []
             invalid_rows = []
 
             for _, row in df.iterrows():
                 try:
-                    if pd.isnull(row["id"]) or not isinstance(row["id"], (int, float)):
-                        raise ValueError(
-                            "Field 'id' is required and must be an integer"
-                        )
+                    # Validar que todos los campos sean requeridos y correctos
                     if (
-                        pd.isnull(row["name"])
-                        or not isinstance(row["name"], str)
-                        or not row["name"].strip()
-                    ):
-                        raise ValueError(
-                            "Field 'name' is required and must be a non-empty string"
+                        (
+                            pd.isnull(row["id"])
+                            or not isinstance(row["id"], (int, float))
                         )
-                    if pd.isnull(row["datetime"]) or not isinstance(
-                        row["datetime"], str
-                    ):
-                        raise ValueError(
-                            "Field 'datetime' is required and must be a string in ISO format"
+                        or (
+                            pd.isnull(row["name"])
+                            or not isinstance(row["name"], str)
+                            or not row["name"].strip()
                         )
-                    if pd.isnull(row["department_id"]) or not isinstance(
-                        row["department_id"], (int, float)
-                    ):
-                        raise ValueError(
-                            "Field 'department_id' is required and must be an integer"
+                        or (
+                            pd.isnull(row["datetime"])
+                            or not isinstance(row["datetime"], str)
                         )
-                    if pd.isnull(row["job_id"]) or not isinstance(
-                        row["job_id"], (int, float)
-                    ):
-                        raise ValueError(
-                            "Field 'job_id' is required and must be an integer"
+                        or (
+                            pd.isnull(row["department_id"])
+                            or not isinstance(row["department_id"], (int, float))
                         )
+                        or (
+                            pd.isnull(row["job_id"])
+                            or not isinstance(row["job_id"], (int, float))
+                        )
+                    ):
+                        raise ValueError("Invalid or missing fields in row")
 
+                    # Convert and sanitize fields
                     id_value = int(row["id"])
                     name_value = row["name"].strip()
                     datetime_value = datetime.fromisoformat(
