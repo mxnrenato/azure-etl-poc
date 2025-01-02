@@ -1,3 +1,4 @@
+# azure-pipelines.yml
 trigger:
   branches:
     include:
@@ -6,6 +7,7 @@ trigger:
     exclude:
       - feature/*
       - hotfix/*
+
 pr:
   branches:
     include:
@@ -24,6 +26,10 @@ stages:
     jobs:
       - job: Build
         steps:
+          # Explícito checkout del repositorio
+          - checkout: self
+            fetchDepth: 1
+            
           - task: UsePythonVersion@0
             inputs:
               versionSpec: '$(pythonVersion)'
@@ -40,6 +46,12 @@ stages:
               pytest tests/ --cov=src --cov-report=xml
             displayName: 'Lint and Run tests'
 
+          - task: PublishCodeCoverageResults@1
+            inputs:
+              codeCoverageTool: Cobertura
+              summaryFileLocation: '$(System.DefaultWorkingDirectory)/coverage.xml'
+            displayName: 'Publish code coverage'
+
           - task: ArchiveFiles@2
             inputs:
               rootFolderOrFile: '$(System.DefaultWorkingDirectory)/src'
@@ -49,16 +61,32 @@ stages:
               replaceExistingArchive: true
             displayName: 'Create deployment package'
 
+          - task: PublishBuildArtifacts@1
+            inputs:
+              pathToPublish: '$(Build.ArtifactStagingDirectory)'
+              artifactName: 'drop'
+            displayName: 'Publish artifacts'
+
   - stage: Deploy_Dev
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
     jobs:
-      - job: Deploy
-        steps:
-          - task: AzureFunctionApp@1
-            inputs:
-              azureSubscription: 'sc_azure_etl_poc'
-              appName: '$(functionAppName)-dev'
-              package: '$(Build.ArtifactStagingDirectory)/$(functionAppName).zip'
+      - deployment: Deploy
+        environment: development
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                  fetchDepth: 1
+
+                - download: current
+                  artifact: 'drop'
+                  
+                - task: AzureFunctionApp@1
+                  inputs:
+                    azureSubscription: 'sc_azure_etl_poc'
+                    appName: '$(functionAppName)-dev'
+                    package: '$(Pipeline.Workspace)/drop/$(functionAppName).zip'
 
   - stage: Deploy_Prod
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
@@ -69,8 +97,14 @@ stages:
           runOnce:
             deploy:
               steps:
+                - checkout: self
+                  fetchDepth: 1
+
+                - download: current
+                  artifact: 'drop'
+                  
                 - task: AzureFunctionApp@1
                   inputs:
                     azureSubscription: 'sc_azure_etl_poc'
                     appName: '$(functionAppName)-prod'
-                    package: '$(Build.ArtifactStagingDirectory)/$(functionAppName).zip'
+                    package: '$(Pipeline.Workspace)/drop/$(functionAppName).zip'
