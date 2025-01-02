@@ -16,7 +16,6 @@ pool:
 
 variables:
   pythonVersion: '3.11'
-  #webAppName: 'etl-poc-web'
   webAppName: 'etl-poc-web'
 
 stages:
@@ -46,7 +45,7 @@ stages:
               rootFolderOrFile: '$(System.DefaultWorkingDirectory)/src'
               includeRootFolder: false
               archiveType: 'zip'
-              archiveFile: '$(Build.ArtifactStagingDirectory)/$(functionAppName).zip'
+              archiveFile: '$(Build.ArtifactStagingDirectory)/$(webAppName).zip'
               replaceExistingArchive: true
             displayName: 'Create deployment package'
 
@@ -73,4 +72,4 @@ stages:
                   inputs:
                     azureSubscription: 'sc_azure_etl_poc'
                     appName: '$(webAppName)'
-                    package: '$(Pipeline.Workspace)/drop/$(functionAppName).zip'
+                    package: '$(Pipeline.Workspace)/drop/$(webAppName).zip'
