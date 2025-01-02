@@ -111,3 +111,19 @@ class AzureBackupRepository(BackupRepository):
 
         except Exception as e:
             raise BackupError(f"Failed to create backup: {str(e)}")
+
+    def _fetch_table_data(self, table_name: str) -> List[Dict]:
+        """
+        Fetch all records from the specified SQL table.
+        
+        Args:
+            table_name: Name of the table to fetch
+            
+        Returns:
+            List of dictionaries containing table records
+        """
+        with pyodbc.connect(self.sql_connection_string) as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"SELECT * FROM {table_name}")
+            columns = [column[0] for column in cursor.description]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
