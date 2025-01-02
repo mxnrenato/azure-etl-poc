@@ -5,7 +5,6 @@ from src.infrastructure.di.container import Container
 
 router = APIRouter()
 
-
 @router.post("/upload", summary="Upload employee CSV file")
 async def upload_employees(
     file: UploadFile = File(...),
@@ -16,7 +15,6 @@ async def upload_employees(
 
     result = await ingest_service.ingest_employees_file(file.file, file.filename)
     return result
-
 
 @router.post("/batch", summary="Ingest batch of employee records")
 async def ingest_batch(
