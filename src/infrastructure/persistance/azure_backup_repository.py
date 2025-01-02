@@ -158,3 +158,56 @@ class AzureBackupRepository(BackupRepository):
                 'job': record['job']
             }
         return record
+
+    async def restore_backup(self, backup_id: str, table_name: str) -> bool:
+        """
+        Restore a table from an AVRO backup.
+        
+        Args:
+            backup_id: ID of the backup to restore
+            table_name: Name of the table to restore to
+            
+        Returns:
+            Boolean indicating success of restore operation
+            
+        Raises:
+            RestoreError: If restore operation fails
+        """
+        try:
+            # Download AVRO file from Azure Blob Storage
+            blob_client = self.blob_service_client.get_blob_client(
+                container=self.container_name,
+                blob=backup_id
+            )
+            temp_file_path = f"/tmp/restore_{table_name}.avro"
+            
+            # Save blob to temporary file
+            with open(temp_file_path, "wb") as file:
+                blob_data = blob_client.download_blob()
+                file.write(blob_data.readall())
+            
+            # Read records from AVRO file
+            with DataFileReader(open(temp_file_path, "rb"), DatumReader()) as reader:
+                records = list(reader)
+            
+            # Restore data to SQL table
+            with pyodbc.connect(self.sql_connection_string) as conn:
+                cursor = conn.cursor()
+                
+                # Clear existing table data
+                cursor.execute(f"TRUNCATE TABLE {table_name}")
+                
+                # Insert restored records
+                for record in records:
+                    fields = ', '.join(record.keys())
+                    placeholders = ', '.join(['?' for _ in record])
+                    query = f"INSERT INTO {table_name} ({fields}) VALUES ({placeholders})"
+                    cursor.execute(query, list(record.values()))
+                
+                conn.commit()
+                
+            return True
+
+        except Exception as e:
+            raise RestoreError(f"Failed to restore backup: {str(e)}")
+
