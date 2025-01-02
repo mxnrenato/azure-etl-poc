@@ -16,15 +16,13 @@ pool:
 
 variables:
   pythonVersion: '3.11'
-  webAppName: 'etl-poc-web'
+  webAppName: 'etl-poc-webapp'
 
 stages:
   - stage: Build
     jobs:
       - job: Build
         steps:
-          - checkout: self
-            
           - task: UsePythonVersion@0
             inputs:
               versionSpec: '$(pythonVersion)'
@@ -38,11 +36,12 @@ stages:
           - script: |
               pip install pytest pytest-cov flake8
               flake8 src/
+              pytest tests/ --cov=src --cov-report=xml
             displayName: 'Lint and Run tests'
 
           - task: ArchiveFiles@2
             inputs:
-              rootFolderOrFile: '$(System.DefaultWorkingDirectory)/src'
+              rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
               includeRootFolder: false
               archiveType: 'zip'
               archiveFile: '$(Build.ArtifactStagingDirectory)/$(webAppName).zip'
@@ -56,11 +55,10 @@ stages:
             displayName: 'Publish artifacts'
 
   - stage: Deploy_Dev
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
     jobs:
       - deployment: Deploy
         environment: development
-        pool:
-          vmImage: 'ubuntu-latest'
         strategy:
           runOnce:
             deploy:
@@ -71,5 +69,5 @@ stages:
                 - task: AzureWebApp@1
                   inputs:
                     azureSubscription: 'sc_azure_etl_poc'
-                    appName: '$(webAppName)'
+                    appName: '$(webAppName)-dev'
                     package: '$(Pipeline.Workspace)/drop/$(webAppName).zip'
