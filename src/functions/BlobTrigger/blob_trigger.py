@@ -1,6 +1,5 @@
 import azure.functions as func
 import logging
-from application.services.ingest_service import IngestService
 from infrastructure.di.container import Container
 
 bp = func.Blueprint()
