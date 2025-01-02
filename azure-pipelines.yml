@@ -1,4 +1,3 @@
-# azure-pipelines.yml
 trigger:
   branches:
     include:
@@ -41,6 +40,15 @@ stages:
               pytest tests/ --cov=src --cov-report=xml
             displayName: 'Lint and Run tests'
 
+          - task: ArchiveFiles@2
+            inputs:
+              rootFolderOrFile: '$(System.DefaultWorkingDirectory)/src'
+              includeRootFolder: false
+              archiveType: 'zip'
+              archiveFile: '$(Build.ArtifactStagingDirectory)/$(functionAppName).zip'
+              replaceExistingArchive: true
+            displayName: 'Create deployment package'
+
   - stage: Deploy_Dev
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
     jobs:
@@ -48,9 +56,9 @@ stages:
         steps:
           - task: AzureFunctionApp@1
             inputs:
-              azureSubscription: 'data_lab_susc'
+              azureSubscription: 'sc_azure_etl_poc'
               appName: '$(functionAppName)-dev'
-              package: '$(System.DefaultWorkingDirectory)/**/*.zip'
+              package: '$(Build.ArtifactStagingDirectory)/$(functionAppName).zip'
 
   - stage: Deploy_Prod
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
@@ -63,6 +71,6 @@ stages:
               steps:
                 - task: AzureFunctionApp@1
                   inputs:
-                    azureSubscription: 'Your-Azure-Subscription'
+                    azureSubscription: 'sc_azure_etl_poc'
                     appName: '$(functionAppName)-prod'
-                    package: '$(System.DefaultWorkingDirectory)/**/*.zip'
+                    package: '$(Build.ArtifactStagingDirectory)/$(functionAppName).zip'
