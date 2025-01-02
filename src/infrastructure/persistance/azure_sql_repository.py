@@ -1,5 +1,5 @@
 import datetime
-from typing import List, Optional
+from typing import List
 import pyodbc
 from domain.entities.employee import Employee
 from domain.repositories.employee_repository import EmployeeRepository

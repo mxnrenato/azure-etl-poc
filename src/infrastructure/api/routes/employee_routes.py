@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
-from typing import List
 from application.services.ingest_service import IngestService
-from application.dto.employee_dto import EmployeeDTO, BatchIngestDTO
+from application.dto.employee_dto import BatchIngestDTO
 from infrastructure.di.container import Container
 
 router = APIRouter()
@@ -26,34 +25,3 @@ async def ingest_batch(
 ):
     result = await ingest_service.ingest_batch(batch)
     return result
-
-
-# src/infrastructure/api/routes/backup_routes.py
-from fastapi import APIRouter, Depends, HTTPException
-from application.services.backup_service import BackupService
-from infrastructure.di.container import Container
-
-router = APIRouter()
-
-
-@router.post("/backup", summary="Create backup of employees table")
-async def create_backup(
-    backup_service: BackupService = Depends(lambda: Container.backup_service()),
-):
-    try:
-        backup_path = await backup_service.create_backup()
-        return {"backup_path": backup_path}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/restore/{backup_id}", summary="Restore from backup")
-async def restore_backup(
-    backup_id: str,
-    backup_service: BackupService = Depends(lambda: Container.backup_service()),
-):
-    try:
-        success = await backup_service.restore_backup(backup_id)
-        return {"success": success}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))

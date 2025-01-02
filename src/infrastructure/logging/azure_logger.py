@@ -2,7 +2,6 @@ from application.interfaces.logger import Logger
 from azure.monitor.opentelemetry import AzureMonitorTraceExporter
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-import logging
 from typing import Any, Dict, Optional
 import json
 
