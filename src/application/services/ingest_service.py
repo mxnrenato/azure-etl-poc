@@ -79,24 +79,22 @@ class IngestService:
     ) -> tuple[list[Employee], list[dict]]:
         """Process and validate employee data from CSV file"""
         try:
-            # Leer archivo CSV
-            file_content.seek(0)  # Asegurarse de leer desde el inicio
+
+            file_content.seek(0)
             df = pd.read_csv(StringIO(file_content.read().decode("utf-8")))
 
-            # Validar columnas obligatorias
             required_columns = ["id", "name", "datetime", "department_id", "job_id"]
             if not all(col in df.columns for col in required_columns):
                 raise ValueError(
                     "Archivo CSV no contiene todas las columnas requeridas"
                 )
 
-            # Validar filas y crear objetos Employee
             employees = []
             invalid_rows = []
 
             for _, row in df.iterrows():
                 try:
-                    # Validar que todos los campos sean requeridos y correctos
+
                     if (
                         (
                             pd.isnull(row["id"])
@@ -122,7 +120,6 @@ class IngestService:
                     ):
                         raise ValueError("Invalid or missing fields in row")
 
-                    # Convert and sanitize fields
                     id_value = int(row["id"])
                     name_value = row["name"].strip()
                     datetime_value = datetime.fromisoformat(
