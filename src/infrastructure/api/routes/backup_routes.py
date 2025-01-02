@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
-from application.services.backup_service import BackupService
-from infrastructure.di.container import Container
+from src.application.services.backup_service import BackupService
+from src.infrastructure.di.container import Container
 
 router = APIRouter()
 

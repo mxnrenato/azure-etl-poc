@@ -1,4 +1,4 @@
-from application.interfaces.storage_service import StorageService
+from src.application.interfaces.storage_service import StorageService
 from azure.storage.blob import BlobServiceClient
 from typing import BinaryIO
 

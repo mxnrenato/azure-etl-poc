@@ -1,6 +1,6 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from domain.exceptions.domain_exceptions import DomainException, ValidationError
+from src.domain.exceptions.domain_exceptions import DomainException, ValidationError
 
 
 async def error_handler(request: Request, call_next):
