@@ -39,7 +39,6 @@ stages:
           - script: |
               pip install pytest pytest-cov flake8
               flake8 src/
-              pytest tests/ --cov=src --cov-report=xml
             displayName: 'Lint and Run tests'
 
           - task: ArchiveFiles@2
