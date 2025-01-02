@@ -65,6 +65,15 @@ class AzureBackupRepository(BackupRepository):
         self.container_name = container_name
         self._ensure_container_exists()
 
+    def _ensure_container_exists(self):
+        """Ensure the backup container exists in Azure Blob Storage"""
+        try:
+            container_client = self.blob_service_client.get_container_client(self.container_name)
+            if not container_client.exists():
+                container_client.create_container()
+        except Exception as e:
+            raise BackupError(f"Failed to ensure container exists: {str(e)}")
+
     async def create_backup(self, table_name: str) -> Optional[str]:
         """
         Create a backup of the specified table in AVRO format.
@@ -211,3 +220,35 @@ class AzureBackupRepository(BackupRepository):
         except Exception as e:
             raise RestoreError(f"Failed to restore backup: {str(e)}")
 
+    async def list_backups(self, table_name: str) -> List[dict]:
+        """
+        List all available backups for a specific table.
+        
+        Args:
+            table_name: Name of the table to list backups for
+            
+        Returns:
+            List of backup metadata dictionaries
+            
+        Raises:
+            BackupError: If listing backups fails
+        """
+        try:
+            container_client = self.blob_service_client.get_container_client(self.container_name)
+            backups = []
+            
+            # List all blobs for the specified table
+            blob_list = container_client.list_blobs(name_starts_with=f"{table_name}/")
+            
+            for blob in blob_list:
+                backups.append({
+                    "id": blob.name,
+                    "table_name": table_name,
+                    "created_at": blob.creation_time.isoformat(),
+                    "size": blob.size
+                })
+            
+            return backups
+
+        except Exception as e:
+            raise BackupError(f"Failed to list backups: {str(e)}")
