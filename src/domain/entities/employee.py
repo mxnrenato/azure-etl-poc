@@ -11,8 +11,8 @@ class Employee:
     id: int
     name: str
     hire_datetime: datetime
-    department_id: int = -1 
-    job_id: int = -1 
+    department_id: int = -1
+    job_id: int = -1
 
     def __post_init__(self):
         if self.name is None or not self.name.strip():
@@ -23,4 +23,3 @@ class Employee:
             print("Warning: Department ID is invalid, setting to default (-1).")
         if self.job_id <= 0:
             print("Warning: Job ID is invalid, setting to default (-1).")
-

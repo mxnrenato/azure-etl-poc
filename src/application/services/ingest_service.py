@@ -12,6 +12,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class IngestService:
     def __init__(
         self, employee_repository: EmployeeRepository, storage_service: StorageService
@@ -73,15 +74,19 @@ class IngestService:
             logger.error(f"Error during batch ingestion: {str(e)}")
             raise IngestError(f"Error during batch ingestion: {str(e)}")
 
-    def _process_file(self, file_content: BinaryIO) -> tuple[list[Employee], list[dict]]:
+    def _process_file(
+        self, file_content: BinaryIO
+    ) -> tuple[list[Employee], list[dict]]:
         """Process and validate employee data from CSV file"""
         try:
-            file_content.seek(0)  
+            file_content.seek(0)
             df = pd.read_csv(StringIO(file_content.read().decode("utf-8")))
 
             required_columns = ["id", "name", "datetime", "department_id", "job_id"]
             if not all(col in df.columns for col in required_columns):
-                raise ValueError("Archivo CSV no contiene todas las columnas requeridas")
+                raise ValueError(
+                    "Archivo CSV no contiene todas las columnas requeridas"
+                )
 
             employees = []
             invalid_rows = []
@@ -89,19 +94,41 @@ class IngestService:
             for _, row in df.iterrows():
                 try:
                     if pd.isnull(row["id"]) or not isinstance(row["id"], (int, float)):
-                        raise ValueError("Field 'id' is required and must be an integer")
-                    if pd.isnull(row["name"]) or not isinstance(row["name"], str) or not row["name"].strip():
-                        raise ValueError("Field 'name' is required and must be a non-empty string")
-                    if pd.isnull(row["datetime"]) or not isinstance(row["datetime"], str):
-                        raise ValueError("Field 'datetime' is required and must be a string in ISO format")
-                    if pd.isnull(row["department_id"]) or not isinstance(row["department_id"], (int, float)):
-                        raise ValueError("Field 'department_id' is required and must be an integer")
-                    if pd.isnull(row["job_id"]) or not isinstance(row["job_id"], (int, float)):
-                        raise ValueError("Field 'job_id' is required and must be an integer")
+                        raise ValueError(
+                            "Field 'id' is required and must be an integer"
+                        )
+                    if (
+                        pd.isnull(row["name"])
+                        or not isinstance(row["name"], str)
+                        or not row["name"].strip()
+                    ):
+                        raise ValueError(
+                            "Field 'name' is required and must be a non-empty string"
+                        )
+                    if pd.isnull(row["datetime"]) or not isinstance(
+                        row["datetime"], str
+                    ):
+                        raise ValueError(
+                            "Field 'datetime' is required and must be a string in ISO format"
+                        )
+                    if pd.isnull(row["department_id"]) or not isinstance(
+                        row["department_id"], (int, float)
+                    ):
+                        raise ValueError(
+                            "Field 'department_id' is required and must be an integer"
+                        )
+                    if pd.isnull(row["job_id"]) or not isinstance(
+                        row["job_id"], (int, float)
+                    ):
+                        raise ValueError(
+                            "Field 'job_id' is required and must be an integer"
+                        )
 
                     id_value = int(row["id"])
                     name_value = row["name"].strip()
-                    datetime_value = datetime.fromisoformat(row["datetime"].replace("Z", ""))
+                    datetime_value = datetime.fromisoformat(
+                        row["datetime"].replace("Z", "")
+                    )
                     department_id_value = int(row["department_id"])
                     job_id_value = int(row["job_id"])
 

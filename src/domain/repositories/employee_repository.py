@@ -23,4 +23,3 @@ class EmployeeRepository(BaseRepository[Employee]):
     ) -> List[Employee]:
         """Retrieve all employees hired within a specific date range."""
         pass
-
