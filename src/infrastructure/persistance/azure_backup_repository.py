@@ -6,8 +6,8 @@ from avro.io import DatumWriter, DatumReader
 from azure.storage.blob import BlobServiceClient
 import pyodbc
 import json
-from domain.exceptions.domain_exceptions import BackupError, RestoreError
-from application.interfaces.backup_repository import BackupRepository
+from src.domain.exceptions.domain_exceptions import BackupError, RestoreError
+from src.application.interfaces.backup_repository import BackupRepository
 
 
 class AzureBackupRepository(BackupRepository):

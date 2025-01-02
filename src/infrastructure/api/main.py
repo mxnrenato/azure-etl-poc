@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import employee_routes, backup_routes
+from src.infrastructure.api.routes import employee_routes, backup_routes
 from .middleware.error_handler import error_handler
 
 

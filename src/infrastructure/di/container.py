@@ -4,7 +4,7 @@ from src.infrastructure.persistance.azure_sql_repository import (
 )
 from src.infrastructure.azure.storage_service import AzureBlobStorageService
 from src.infrastructure.logging.azure_logger import AzureLogger
-from application.services.ingest_service import IngestService
+from src.application.services.ingest_service import IngestService
 
 
 class Container(containers.DeclarativeContainer):

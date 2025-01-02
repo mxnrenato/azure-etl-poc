@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
-from application.services.ingest_service import IngestService
-from application.dto.employee_dto import BatchIngestDTO
-from infrastructure.di.container import Container
+from src.application.services.ingest_service import IngestService
+from src.application.dto.employee_dto import BatchIngestDTO
+from src.infrastructure.di.container import Container
 
 router = APIRouter()
 

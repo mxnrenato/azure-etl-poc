@@ -1,8 +1,8 @@
 import datetime
 from typing import List
 import pyodbc
-from domain.entities.employee import Employee
-from domain.repositories.employee_repository import EmployeeRepository
+from src.domain.entities.employee import Employee
+from src.domain.repositories.employee_repository import EmployeeRepository
 import avro.schema
 from avro.datafile import DataFileWriter, DataFileReader
 from avro.io import DatumWriter, DatumReader
