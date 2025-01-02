@@ -1,5 +1,5 @@
 {
-    "scriptFile": "blob_trigger.py",
+    "scriptFile": "__init__.py",
     "bindings": [
         {
             "name": "myblob",
