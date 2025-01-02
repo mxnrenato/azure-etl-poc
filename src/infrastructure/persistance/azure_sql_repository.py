@@ -12,6 +12,80 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
     def __init__(self, connection_string: str):
         self.connection_string = connection_string
 
+    async def find_by_department(self, department_id: int) -> List[Employee]:
+        try:
+            with pyodbc.connect(self.connection_string) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT * FROM employees WHERE department_id = ?", department_id
+                )
+                rows = cursor.fetchall()
+
+                employees = [
+                    Employee(
+                        id=row.id,
+                        name=row.name,
+                        hire_datetime=row.hire_datetime,
+                        department_id=row.department_id,
+                        job_id=row.job_id,
+                    )
+                    for row in rows
+                ]
+                return employees
+        except Exception as e:
+            print(f"Error finding employees by department: {str(e)}")
+            return []
+
+    async def find_by_job(self, job_id: int) -> List[Employee]:
+        try:
+            with pyodbc.connect(self.connection_string) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM employees WHERE job_id = ?", job_id)
+                rows = cursor.fetchall()
+
+                employees = [
+                    Employee(
+                        id=row.id,
+                        name=row.name,
+                        hire_datetime=row.hire_datetime,
+                        department_id=row.department_id,
+                        job_id=row.job_id,
+                    )
+                    for row in rows
+                ]
+                return employees
+        except Exception as e:
+            print(f"Error finding employees by job: {str(e)}")
+            return []
+
+    async def find_by_hire_date_range(
+        self, start_date: datetime.datetime, end_date: datetime.datetime
+    ) -> List[Employee]:
+        try:
+            with pyodbc.connect(self.connection_string) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT * FROM employees WHERE hire_datetime BETWEEN ? AND ?",
+                    start_date,
+                    end_date,
+                )
+                rows = cursor.fetchall()
+
+                employees = [
+                    Employee(
+                        id=row.id,
+                        name=row.name,
+                        hire_datetime=row.hire_datetime,
+                        department_id=row.department_id,
+                        job_id=row.job_id,
+                    )
+                    for row in rows
+                ]
+                return employees
+        except Exception as e:
+            print(f"Error finding employees by hire date range: {str(e)}")
+            return []
+
     async def save(self, employee: Employee) -> bool:
         try:
             with pyodbc.connect(self.connection_string) as conn:

@@ -5,6 +5,12 @@ from src.application.dto.employee_dto import BatchIngestDTO
 from src.domain.exceptions.domain_exceptions import IngestError
 
 from typing import BinaryIO
+import pandas as pd
+from datetime import datetime
+from io import StringIO
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class IngestService:
@@ -23,17 +29,24 @@ class IngestService:
             await self.storage_service.store_file(file_content, f"raw/{filename}")
 
             # Process and validate data
-            employees = self._process_file(file_content)
+            file_content.seek(0)  # Reiniciar el cursor
+            employees, invalid_rows = self._process_file(file_content)
+
+            # Log invalid rows
+            if invalid_rows:
+                logger.warning(f"Invalid rows: {len(invalid_rows)}")
 
             # Store valid records
             results = await self.employee_repository.save_batch(employees)
 
             return {
-                "processed": len(employees),
+                "processed": len(employees) + len(invalid_rows),
                 "successful": sum(1 for r in results if r),
-                "failed": sum(1 for r in results if not r),
+                "failed": len(invalid_rows) + sum(1 for r in results if not r),
+                "invalid_rows": len(invalid_rows),
             }
         except Exception as e:
+            logger.error(f"Error during ingestion: {str(e)}")
             raise IngestError(f"Error during ingestion: {str(e)}")
 
     async def ingest_batch(self, batch_dto: BatchIngestDTO) -> dict:
@@ -58,4 +71,76 @@ class IngestService:
                 "failed": sum(1 for r in results if not r),
             }
         except Exception as e:
+            logger.error(f"Error during batch ingestion: {str(e)}")
             raise IngestError(f"Error during batch ingestion: {str(e)}")
+
+    def _process_file(
+        self, file_content: BinaryIO
+    ) -> tuple[list[Employee], list[dict]]:
+        """Process and validate employee data from CSV file"""
+        try:
+
+            file_content.seek(0)
+            df = pd.read_csv(StringIO(file_content.read().decode("utf-8")))
+
+            required_columns = ["id", "name", "datetime", "department_id", "job_id"]
+            if not all(col in df.columns for col in required_columns):
+                raise ValueError(
+                    "Archivo CSV no contiene todas las columnas requeridas"
+                )
+
+            employees = []
+            invalid_rows = []
+
+            for _, row in df.iterrows():
+                try:
+
+                    if (
+                        (
+                            pd.isnull(row["id"])
+                            or not isinstance(row["id"], (int, float))
+                        )
+                        or (
+                            pd.isnull(row["name"])
+                            or not isinstance(row["name"], str)
+                            or not row["name"].strip()
+                        )
+                        or (
+                            pd.isnull(row["datetime"])
+                            or not isinstance(row["datetime"], str)
+                        )
+                        or (
+                            pd.isnull(row["department_id"])
+                            or not isinstance(row["department_id"], (int, float))
+                        )
+                        or (
+                            pd.isnull(row["job_id"])
+                            or not isinstance(row["job_id"], (int, float))
+                        )
+                    ):
+                        raise ValueError("Invalid or missing fields in row")
+
+                    id_value = int(row["id"])
+                    name_value = row["name"].strip()
+                    datetime_value = datetime.fromisoformat(
+                        row["datetime"].replace("Z", "")
+                    )
+                    department_id_value = int(row["department_id"])
+                    job_id_value = int(row["job_id"])
+
+                    employees.append(
+                        Employee(
+                            id=id_value,
+                            name=name_value,
+                            hire_datetime=datetime_value,
+                            department_id=department_id_value,
+                            job_id=job_id_value,
+                        )
+                    )
+                except Exception as e:
+                    logger.warning(f"Invalid row skipped: {row}. Error: {str(e)}")
+                    invalid_rows.append(row.to_dict())
+
+            return employees, invalid_rows
+        except Exception as e:
+            raise ValueError(f"Error al procesar el archivo: {str(e)}")
