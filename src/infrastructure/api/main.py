@@ -11,7 +11,7 @@ app = FastAPI(
     version="1.0.0",
     openapi_url="/api/openapi.json",
     docs_url="/api/docs",
-    redoc_url="/api/redoc"
+    redoc_url="/api/redoc",
 )
 
 app.middleware("http")(error_handler)
@@ -23,17 +23,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(
-    employee_routes.router,
-    prefix="/api",
-    tags=["employees"]
-)
+app.include_router(employee_routes.router, prefix="/api", tags=["employees"])
 
-app.include_router(
-    backup_routes.router,
-    prefix="/api",
-    tags=["system"]
-)
+app.include_router(backup_routes.router, prefix="/api", tags=["system"])
+
 
 def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
     return AsgiMiddleware(app).handle(req, context)

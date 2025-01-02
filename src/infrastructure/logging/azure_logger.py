@@ -4,7 +4,9 @@ import json
 
 class AzureLogger:
     def __init__(self, connection_string: str):
-        self.connection_string = connection_string  # Retenido por si es necesario más adelante
+        self.connection_string = (
+            connection_string  # Retenido por si es necesario más adelante
+        )
 
     def _format_log(self, message: str, **kwargs: Dict[str, Any]) -> str:
         log_data = {"message": message}
