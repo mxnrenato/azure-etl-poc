@@ -48,7 +48,7 @@ stages:
         steps:
           - task: AzureFunctionApp@1
             inputs:
-              azureSubscription: 'Your-Azure-Subscription'
+              azureSubscription: 'data_lab_susc'
               appName: '$(functionAppName)-dev'
               package: '$(System.DefaultWorkingDirectory)/**/*.zip'
 
