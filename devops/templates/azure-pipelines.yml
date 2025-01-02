@@ -15,7 +15,8 @@ pr:
       - master
 
 pool:
-  name: Default
+  #name: Default
+  vmImage: 'ubuntu-latest'
 
 variables:
   pythonVersion: '3.9'
@@ -65,7 +66,8 @@ stages:
       - deployment: Deploy
         environment: development
         pool:
-          name: Default
+          #name: Default
+          vmImage: 'ubuntu-latest'
         strategy:
           runOnce:
             deploy:
@@ -85,7 +87,8 @@ stages:
       - deployment: Deploy
         environment: 'production'
         pool:
-          name: Default
+          #name: Default
+          vmImage: 'ubuntu-latest'
         strategy:
           runOnce:
             deploy:
