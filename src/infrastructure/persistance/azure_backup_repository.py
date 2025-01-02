@@ -127,3 +127,34 @@ class AzureBackupRepository(BackupRepository):
             cursor.execute(f"SELECT * FROM {table_name}")
             columns = [column[0] for column in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    def _format_record(self, record: Dict, table_name: str) -> Dict:
+        """
+        Format a database record according to the table's AVRO schema.
+        
+        Args:
+            record: Database record to format
+            table_name: Name of the table the record belongs to
+            
+        Returns:
+            Formatted record matching AVRO schema
+        """
+        if table_name == 'employees':
+            return {
+                'id': record['id'],
+                'name': record['name'],
+                'datetime': record['datetime'].isoformat() if isinstance(record['datetime'], datetime) else record['datetime'],
+                'department_id': record['department_id'],
+                'job_id': record['job_id']
+            }
+        elif table_name == 'departments':
+            return {
+                'id': record['id'],
+                'department': record['department']
+            }
+        elif table_name == 'jobs':
+            return {
+                'id': record['id'],
+                'job': record['job']
+            }
+        return record
