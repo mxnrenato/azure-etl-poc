@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar, List
 
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 class BaseRepository(ABC, Generic[T]):
     @abstractmethod

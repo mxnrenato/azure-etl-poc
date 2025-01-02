@@ -6,9 +6,12 @@ import logging
 from typing import Any, Dict, Optional
 import json
 
+
 class AzureLogger(Logger):
     def __init__(self, connection_string: str):
-        self.exporter = AzureMonitorTraceExporter.from_connection_string(connection_string)
+        self.exporter = AzureMonitorTraceExporter.from_connection_string(
+            connection_string
+        )
         provider = TracerProvider()
         processor = BatchSpanProcessor(self.exporter)
         provider.add_span_processor(processor)
@@ -24,7 +27,9 @@ class AzureLogger(Logger):
             span.set_attribute("log.level", "INFO")
             span.set_attribute("log.message", self._format_log(message, **kwargs))
 
-    async def error(self, message: str, error: Optional[Exception] = None, **kwargs: Dict[str, Any]) -> None:
+    async def error(
+        self, message: str, error: Optional[Exception] = None, **kwargs: Dict[str, Any]
+    ) -> None:
         with self.tracer.start_as_current_span("error") as span:
             span.set_attribute("log.level", "ERROR")
             if error:
