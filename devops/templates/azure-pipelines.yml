@@ -7,6 +7,7 @@ trigger:
     exclude:
       - feature/*
       - hotfix/*
+
 pr:
   branches:
     include:
@@ -14,7 +15,7 @@ pr:
       - master
 
 pool:
-  vmImage: 'ubuntu-latest'
+  name: Default
 
 variables:
   pythonVersion: '3.9'
@@ -25,6 +26,8 @@ stages:
     jobs:
       - job: Build
         steps:
+          - checkout: self
+            
           - task: UsePythonVersion@0
             inputs:
               versionSpec: '$(pythonVersion)'
@@ -41,28 +44,57 @@ stages:
               pytest tests/ --cov=src --cov-report=xml
             displayName: 'Lint and Run tests'
 
+          - task: ArchiveFiles@2
+            inputs:
+              rootFolderOrFile: '$(System.DefaultWorkingDirectory)/src'
+              includeRootFolder: false
+              archiveType: 'zip'
+              archiveFile: '$(Build.ArtifactStagingDirectory)/$(functionAppName).zip'
+              replaceExistingArchive: true
+            displayName: 'Create deployment package'
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              pathToPublish: '$(Build.ArtifactStagingDirectory)'
+              artifactName: 'drop'
+            displayName: 'Publish artifacts'
+
   - stage: Deploy_Dev
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
     jobs:
-      - job: Deploy
-        steps:
-          - task: AzureFunctionApp@1
-            inputs:
-              azureSubscription: 'Your-Azure-Subscription'
-              appName: '$(functionAppName)-dev'
-              package: '$(System.DefaultWorkingDirectory)/**/*.zip'
+      - deployment: Deploy
+        environment: development
+        pool:
+          name: Default
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: 'drop'
+                  
+                - task: AzureFunctionApp@1
+                  inputs:
+                    azureSubscription: 'sc_azure_etl_poc'
+                    appName: '$(functionAppName)-dev'
+                    package: '$(Pipeline.Workspace)/drop/$(functionAppName).zip'
 
   - stage: Deploy_Prod
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
     jobs:
       - deployment: Deploy
         environment: 'production'
+        pool:
+          name: Default
         strategy:
           runOnce:
             deploy:
               steps:
+                - download: current
+                  artifact: 'drop'
+                  
                 - task: AzureFunctionApp@1
                   inputs:
-                    azureSubscription: 'Your-Azure-Subscription'
+                    azureSubscription: 'sc_azure_etl_poc'
                     appName: '$(functionAppName)-prod'
-                    package: '$(System.DefaultWorkingDirectory)/**/*.zip'
+                    package: '$(Pipeline.Workspace)/drop/$(functionAppName).zip'
