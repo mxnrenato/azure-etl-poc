@@ -72,5 +72,5 @@ stages:
                 - task: AzureFunctionApp@1
                   inputs:
                     azureSubscription: 'sc_azure_etl_poc'
-                    appName: '$(functionAppName)-prod'
+                    appName: '$(functionAppName)'
                     package: '$(Pipeline.Workspace)/drop/$(functionAppName).zip'
