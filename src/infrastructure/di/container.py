@@ -3,6 +3,7 @@ from src.application.services.backup_service import BackupService
 from src.infrastructure.persistance.azure_backup_repository import AzureBackupRepository
 from src.infrastructure.persistance.azure_sql_repository import (
     AzureSQLEmployeeRepository,
+    AzureSQLDepartmentRepository
 )
 from src.infrastructure.azure.storage_service import AzureBlobStorageService
 from src.infrastructure.logging.azure_logger import AzureLogger
@@ -38,6 +39,10 @@ class Container(containers.DeclarativeContainer):
         AzureSQLEmployeeRepository, connection_string=config.azure_sql_connection_string
     )
 
+    department_repository = providers.Singleton(
+        AzureSQLDepartmentRepository, connection_string=config.azure_sql_connection_string
+    )
+
     storage_service = providers.Singleton(
         AzureBlobStorageServiceInfrastructure,  # Updated class name
         connection_string=config.azure_storage_connection_string,
@@ -48,6 +53,7 @@ class Container(containers.DeclarativeContainer):
     ingest_service = providers.Singleton(
         IngestService,
         employee_repository=employee_repository,
+        department_repository=department_repository,
         storage_service=storage_service,
     )
     # Repositorio de respaldos
