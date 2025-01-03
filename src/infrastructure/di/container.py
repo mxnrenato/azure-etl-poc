@@ -5,14 +5,17 @@ from src.infrastructure.persistance.azure_sql_repository import (
 from src.infrastructure.azure.storage_service import AzureBlobStorageService
 from src.infrastructure.logging.azure_logger import AzureLogger
 from src.application.services.ingest_service import IngestService
-from src.infrastructure.services.azure_blob_storage_service import AzureBlobStorageServiceInfrastructure
+from src.infrastructure.services.azure_blob_storage_service import (
+    AzureBlobStorageServiceInfrastructure,
+)
 import os
 
 from settings import (
     AZURE_STORAGE_CONNECTION_STRING,
     AZURE_BLOB_CONTAINER_ROW_DATA,
-    AZURE_SQL_CONNECTION_STRING
+    AZURE_SQL_CONNECTION_STRING,
 )
+
 
 class Container(containers.DeclarativeContainer):
     # Load settings
@@ -20,7 +23,7 @@ class Container(containers.DeclarativeContainer):
     config.azure_storage_connection_string.override(AZURE_STORAGE_CONNECTION_STRING)
     config.azure_storage_container_name.override(AZURE_BLOB_CONTAINER_ROW_DATA)
     config.azure_sql_connection_string.override(AZURE_SQL_CONNECTION_STRING)
-    #config.azure_monitor_connection_string.override(AZURE_MONITOR_CONNECTION_STRING)
+    # config.azure_monitor_connection_string.override(AZURE_MONITOR_CONNECTION_STRING)
 
     # Infrastructure
     logger = providers.Singleton(
@@ -34,7 +37,7 @@ class Container(containers.DeclarativeContainer):
     storage_service = providers.Singleton(
         AzureBlobStorageServiceInfrastructure,  # Updated class name
         connection_string=config.azure_storage_connection_string,
-        container_name=config.azure_storage_container_name
+        container_name=config.azure_storage_container_name,
     )
 
     # Application Services
@@ -43,4 +46,3 @@ class Container(containers.DeclarativeContainer):
         employee_repository=employee_repository,
         storage_service=storage_service,
     )
-

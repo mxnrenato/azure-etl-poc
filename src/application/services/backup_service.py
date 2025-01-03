@@ -49,7 +49,9 @@ class BackupService:
             return True
 
         except Exception as e:
-            await self.logger.error(f"Error restoring backup for {table_name}: {str(e)}")
+            await self.logger.error(
+                f"Error restoring backup for {table_name}: {str(e)}"
+            )
             raise RestoreError(f"Error restoring backup: {str(e)}")
 
     async def list_backups(self, table_name: str) -> list:
@@ -63,4 +65,3 @@ class BackupService:
         except Exception as e:
             await self.logger.error(f"Error listing backups for {table_name}: {str(e)}")
             raise BackupError(f"Error listing backups: {str(e)}")
-

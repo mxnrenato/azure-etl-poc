@@ -7,6 +7,7 @@ import avro.schema
 from avro.datafile import DataFileWriter, DataFileReader
 from avro.io import DatumWriter, DatumReader
 
+
 class AzureSQLEmployeeRepository(EmployeeRepository):
     def __init__(self, connection_string: str):
         self.connection_string = connection_string
@@ -20,7 +21,7 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
         except Exception as e:
             print(f"[ERROR] Failed to establish database connection: {str(e)}")
             raise e
-        
+
     async def find_by_department(self, department_id: int) -> List[Employee]:
         try:
             with pyodbc.connect(self.connection_string) as conn:
@@ -143,7 +144,6 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
         # Commit all changes to the database
         self.connection.commit()
         return results
-
 
     async def backup(self, format: str = "AVRO") -> str:
         try:

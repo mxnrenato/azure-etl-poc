@@ -20,7 +20,9 @@ class IngestService:
         self.employee_repository = employee_repository
         self.storage_service = storage_service
 
-    async def process_and_store_file(self, file_content: BinaryIO, table_name: str) -> dict:
+    async def process_and_store_file(
+        self, file_content: BinaryIO, table_name: str
+    ) -> dict:
         """
         Process and store data from a file into the database.
 
@@ -33,7 +35,9 @@ class IngestService:
         """
         try:
             # Store the raw file in blob storage
-            is_stored = await self.storage_service.store_file(file_content, f"{table_name}.csv")
+            is_stored = await self.storage_service.store_file(
+                file_content, f"{table_name}.csv"
+            )
             if not is_stored:
                 raise IngestError("Failed to store the file in Blob Storage.")
             print(f"File stored in Blob Storage: {table_name}.csv")
@@ -44,7 +48,9 @@ class IngestService:
 
             # Log invalid rows
             if invalid_rows:
-                print(f"Found {len(invalid_rows)} invalid rows while processing '{table_name}'")
+                print(
+                    f"Found {len(invalid_rows)} invalid rows while processing '{table_name}'"
+                )
 
             # Save valid records in the database
             save_results = await self.employee_repository.save_batch(records)
@@ -60,7 +66,6 @@ class IngestService:
         except Exception as e:
             print(f"Error processing and storing file: {str(e)}")
             raise IngestError(f"Error processing and storing file: {str(e)}")
-
 
     async def ingest_employees_file(
         self, file_content: BinaryIO, filename: str
@@ -116,7 +121,9 @@ class IngestService:
             logger.error(f"Error during batch ingestion: {str(e)}")
             raise IngestError(f"Error during batch ingestion: {str(e)}")
 
-    def _process_file(self, file_content: BinaryIO, table_name: str) -> tuple[List[Employee], List[Dict]]:
+    def _process_file(
+        self, file_content: BinaryIO, table_name: str
+    ) -> tuple[List[Employee], List[Dict]]:
         """Process and validate data for the given table"""
         try:
             file_content.seek(0)
@@ -135,12 +142,14 @@ class IngestService:
             df = pd.read_csv(
                 StringIO(file_content.read().decode("utf-8")),
                 names=required_columns,
-                header=None  # Indica que el CSV no tiene encabezados
+                header=None,  # Indica que el CSV no tiene encabezados
             )
 
             # Verifica que todas las columnas requeridas estén presentes
             if not all(col in df.columns for col in required_columns):
-                raise ValueError(f"CSV file does not contain all required columns for table '{table_name}'")
+                raise ValueError(
+                    f"CSV file does not contain all required columns for table '{table_name}'"
+                )
 
             employees = []
             invalid_rows = []
@@ -159,12 +168,12 @@ class IngestService:
         except Exception as e:
             raise ValueError(f"Error processing file: {str(e)}")
 
-
-
     def _validate_employee_row(self, row: pd.Series) -> dict:
         """Validate and convert an employee row"""
         if (
-            pd.isnull(row["id"]) or not isinstance(row["id"], (int, float)) or row["id"] <= 0
+            pd.isnull(row["id"])
+            or not isinstance(row["id"], (int, float))
+            or row["id"] <= 0
         ):
             raise ValueError("Invalid or missing 'id'")
         if (
@@ -207,11 +216,13 @@ class IngestService:
             return True
         except ValueError:
             return False
-        
+
     def _validate_department_row(self, row: pd.Series) -> dict:
         """Validate and convert a department row"""
         if (
-            pd.isnull(row["id"]) or not isinstance(row["id"], (int, float)) or row["id"] <= 0
+            pd.isnull(row["id"])
+            or not isinstance(row["id"], (int, float))
+            or row["id"] <= 0
         ):
             raise ValueError("Invalid or missing 'id'")
         if (
@@ -229,7 +240,9 @@ class IngestService:
     def _validate_job_row(self, row: pd.Series) -> dict:
         """Validate and convert a job row"""
         if (
-            pd.isnull(row["id"]) or not isinstance(row["id"], (int, float)) or row["id"] <= 0
+            pd.isnull(row["id"])
+            or not isinstance(row["id"], (int, float))
+            or row["id"] <= 0
         ):
             raise ValueError("Invalid or missing 'id'")
         if (
@@ -243,4 +256,3 @@ class IngestService:
             "id": int(row["id"]),
             "job": row["job"].strip(),
         }
-

@@ -56,17 +56,25 @@ class AzureBackupRepository(BackupRepository):
             blob_connection_string: Azure Blob Storage connection string
             container_name: Name of the container for storing backups
         """
-        self.blob_service_client = BlobServiceClient.from_connection_string(blob_connection_string)
-        self.sql_connection_string = os.getenv("AZURE_SQL_CONNECTION_STRING")  # Use the environment variable
+        self.blob_service_client = BlobServiceClient.from_connection_string(
+            blob_connection_string
+        )
+        self.sql_connection_string = os.getenv(
+            "AZURE_SQL_CONNECTION_STRING"
+        )  # Use the environment variable
         if not self.sql_connection_string:
-            raise ValueError("AZURE_SQL_CONNECTION_STRING is not set in environment variables")
+            raise ValueError(
+                "AZURE_SQL_CONNECTION_STRING is not set in environment variables"
+            )
         self.container_name = container_name
         self._ensure_container_exists()
 
     def _ensure_container_exists(self):
         """Ensure the backup container exists in Azure Blob Storage"""
         try:
-            container_client = self.blob_service_client.get_container_client(self.container_name)
+            container_client = self.blob_service_client.get_container_client(
+                self.container_name
+            )
             if not container_client.exists():
                 container_client.create_container()
         except Exception as e:
@@ -95,12 +103,16 @@ class AzureBackupRepository(BackupRepository):
             schema = avro.schema.parse(json.dumps(self.SCHEMAS[table_name]))
             temp_file_path = f"/tmp/{backup_name}"
 
-            with DataFileWriter(open(temp_file_path, "wb"), DatumWriter(), schema) as writer:
+            with DataFileWriter(
+                open(temp_file_path, "wb"), DatumWriter(), schema
+            ) as writer:
                 for record in data:
                     writer.append(self._format_record(record, table_name))
 
             with open(temp_file_path, "rb") as data:
-                blob_client = self.blob_service_client.get_blob_client(container=self.container_name, blob=backup_name)
+                blob_client = self.blob_service_client.get_blob_client(
+                    container=self.container_name, blob=backup_name
+                )
                 blob_client.upload_blob(data)
 
             return backup_name
@@ -135,7 +147,11 @@ class AzureBackupRepository(BackupRepository):
                 return {
                     "id": record["id"],
                     "name": record["name"],
-                    "datetime": record["datetime"].isoformat() if isinstance(record["datetime"], datetime) else record["datetime"],
+                    "datetime": (
+                        record["datetime"].isoformat()
+                        if isinstance(record["datetime"], datetime)
+                        else record["datetime"]
+                    ),
                     "department_id": record["department_id"],
                     "job_id": record["job_id"],
                 }
@@ -152,7 +168,9 @@ class AzureBackupRepository(BackupRepository):
         Restore a table from an AVRO backup.
         """
         try:
-            blob_client = self.blob_service_client.get_blob_client(container=self.container_name, blob=backup_id)
+            blob_client = self.blob_service_client.get_blob_client(
+                container=self.container_name, blob=backup_id
+            )
             temp_file_path = f"/tmp/restore_{table_name}.avro"
 
             with open(temp_file_path, "wb") as file:
@@ -168,7 +186,9 @@ class AzureBackupRepository(BackupRepository):
                 for record in records:
                     fields = ", ".join(record.keys())
                     placeholders = ", ".join(["?" for _ in record])
-                    query = f"INSERT INTO {table_name} ({fields}) VALUES ({placeholders})"
+                    query = (
+                        f"INSERT INTO {table_name} ({fields}) VALUES ({placeholders})"
+                    )
                     cursor.execute(query, list(record.values()))
                 conn.commit()
             return True
@@ -180,7 +200,9 @@ class AzureBackupRepository(BackupRepository):
         List all available backups for a specific table.
         """
         try:
-            container_client = self.blob_service_client.get_container_client(self.container_name)
+            container_client = self.blob_service_client.get_container_client(
+                self.container_name
+            )
             backups = []
             blob_list = container_client.list_blobs(name_starts_with=f"{table_name}/")
 
