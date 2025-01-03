@@ -3,11 +3,12 @@ from src.domain.entities.departament import Department
 from src.domain.entities.job import Job
 from src.domain.repositories.employee_repository import EmployeeRepository
 from src.domain.repositories.department_repository import DepartmentRepository
+from src.domain.repositories.job_repository import JobRepository
 from src.application.interfaces.storage_service import StorageService
 from src.application.dto.employee_dto import BatchIngestDTO
 from src.domain.exceptions.domain_exceptions import IngestError
 import requests
-from typing import BinaryIO, List, Dict
+from typing import BinaryIO, List, Dict, Tuple
 import pandas as pd
 from datetime import datetime
 from io import StringIO
@@ -18,11 +19,144 @@ logger = logging.getLogger(__name__)
 
 class IngestService:
     def __init__(
-        self, employee_repository: EmployeeRepository, department_repository: DepartmentRepository, storage_service: StorageService
+        self, employee_repository: EmployeeRepository, department_repository: DepartmentRepository, job_repository: JobRepository,storage_service: StorageService
     ):
         self.employee_repository = employee_repository
         self.department_repository = department_repository
+        self.job_repository = job_repository
         self.storage_service = storage_service
+
+    async def process_and_store_file_in_batches(
+        self, 
+        file_content: BinaryIO, 
+        table_name: str,
+        batch_size: int = 1000
+    ) -> Dict:
+        """
+        Process and store data from a file into the database using batch processing.
+        
+        Args:
+            file_content: The file content to process
+            table_name: The name of the table to store the data
+            batch_size: Number of records to process in each batch
+        """
+        try:
+            # Store the raw file in blob storage
+            filename = f"{table_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+            is_stored = await self.storage_service.store_file(file_content, filename)
+            
+            if not is_stored:
+                raise IngestError("Failed to store file in Blob Storage")
+            
+            logger.info(f"File stored in Blob Storage: {filename}")
+
+            # Define required columns for each table
+            required_columns_by_table = {
+                "employees": ["id", "name", "datetime", "department_id", "job_id"],
+                "departments": ["id", "department"],
+                "jobs": ["id", "job"]
+            }
+
+            if table_name not in required_columns_by_table:
+                raise ValueError(f"Unknown table: {table_name}")
+
+            # Reset file pointer
+            file_content.seek(0)
+            
+            # Read CSV in chunks, explicitly setting the column names
+            df_iterator = pd.read_csv(
+                StringIO(file_content.read().decode('utf-8')),
+                chunksize=batch_size,
+                names=required_columns_by_table[table_name],  # Explicitly set column names
+                header=None  # Indicate no header row in CSV
+            )
+
+            total_processed = 0
+            total_successful = 0
+            total_failed = 0
+            total_invalid = 0
+
+            # Process each batch
+            for chunk in df_iterator:
+                batch_records, invalid_rows = self._process_batch(chunk, table_name)
+                
+                # Save batch according to table type
+                if batch_records:
+                    if table_name == "employees":
+                        save_results = await self.employee_repository.save_batch(batch_records)
+                    elif table_name == "departments":
+                        save_results = await self.department_repository.save_batch(batch_records)
+                    elif table_name == "jobs":
+                        save_results = await self.job_repository.save_batch(batch_records)
+                    
+                    successful = sum(1 for r in save_results if r)
+                    failed = len(batch_records) - successful
+                    
+                    total_processed += len(batch_records) + len(invalid_rows)
+                    total_successful += successful
+                    total_failed += failed
+                    total_invalid += len(invalid_rows)
+                    
+                    logger.info(
+                        f"Batch processed - Success: {successful}, "
+                        f"Failed: {failed}, Invalid: {len(invalid_rows)}"
+                    )
+
+            return {
+                "processed": total_processed,
+                "successful": total_successful,
+                "failed": total_failed,
+                "invalid_rows": total_invalid,
+                "filename": filename
+            }
+
+        except Exception as e:
+            logger.error(f"Error processing and storing file: {str(e)}")
+            raise IngestError(f"Error processing and storing file: {str(e)}")
+
+    def _process_batch(
+        self, 
+        batch_df: pd.DataFrame, 
+        table_name: str
+    ) -> Tuple[List[object], List[Dict]]:
+        """
+        Process a batch of records from the dataframe.
+        """
+        valid_records = []
+        invalid_records = []
+
+        # Ensure all required columns exist
+        required_columns = {
+            "employees": ["id", "name", "datetime", "department_id", "job_id"],
+            "departments": ["id", "department"],
+            "jobs": ["id", "job"]
+        }.get(table_name)
+
+        if not required_columns:
+            raise ValueError(f"Unknown table: {table_name}")
+
+        # Verify all required columns are present
+        missing_columns = [col for col in required_columns if col not in batch_df.columns]
+        if missing_columns:
+            raise ValueError(f"Missing required columns: {missing_columns}")
+
+        # Process each row in the batch
+        for _, row in batch_df.iterrows():
+            try:
+                if table_name == "employees":
+                    validated_data = self._validate_employee_row(row)
+                    valid_records.append(Employee(**validated_data))
+                elif table_name == "departments":
+                    validated_data = self._validate_department_row(row)
+                    valid_records.append(Department(**validated_data))
+                elif table_name == "jobs":
+                    validated_data = self._validate_job_row(row)
+                    valid_records.append(Job(**validated_data))
+            except ValueError as e:
+                invalid_records.append(row.to_dict())
+                logger.warning(f"Validation failed for row: {row.to_dict()}. Error: {str(e)}")
+
+        return valid_records, invalid_records
 
     async def process_and_store_file(
         self, file_content: BinaryIO, table_name: str
@@ -63,6 +197,10 @@ class IngestService:
                 failed = len(records) - successful
             elif table_name == "departments":
                 save_results = await self.department_repository.save_batch(records)
+                successful = sum(1 for r in save_results if r)
+                failed = len(records) - successful
+            elif table_name == "jobs":
+                save_results = await self.job_repository.save_batch(records)
                 successful = sum(1 for r in save_results if r)
                 failed = len(records) - successful
 
