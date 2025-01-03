@@ -2,7 +2,9 @@ import datetime
 from typing import List
 import pyodbc
 from src.domain.entities.employee import Employee
+from src.domain.entities.departament import Department
 from src.domain.repositories.employee_repository import EmployeeRepository
+from src.domain.repositories.department_repository import DepartmentRepository
 import avro.schema
 from avro.datafile import DataFileWriter, DataFileReader
 from avro.io import DatumWriter, DatumReader
@@ -213,6 +215,150 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
                             emp["datetime"],
                             emp["department_id"],
                             emp["job_id"],
+                        ),
+                    )
+
+                return True
+        except Exception as e:
+            print(f"Error restoring backup: {str(e)}")
+            return False
+
+class AzureSQLDepartmentRepository(DepartmentRepository):
+    def __init__(self, connection_string: str):
+        self.connection_string = connection_string
+        self.connection = self._create_connection()
+
+    def _create_connection(self):
+        try:
+            connection = pyodbc.connect(self.connection_string)
+            print("[INFO] Database connection established successfully.")
+            return connection
+        except Exception as e:
+            print(f"[ERROR] Failed to establish database connection: {str(e)}")
+            raise e
+
+    async def find_by_name(self, department: str) -> List[Department]:
+        try:
+            with pyodbc.connect(self.connection_string) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT * FROM departments WHERE department = ?", department
+                )
+                rows = cursor.fetchall()
+
+                department = [
+                    Department(
+                        id=row.id,
+                        department=row.department,
+                    )
+                    for row in rows
+                ]
+                return department
+        except Exception as e:
+            print(f"Error finding department by department: {str(e)}")
+            return []
+    async def save(self, departments: Department) -> bool:
+        try:
+            with pyodbc.connect(self.connection_string) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    INSERT INTO departments (id, department)
+                    VALUES (?, ?)
+                """,
+                    (
+                        departments.id,
+                        departments.department,
+                    ),
+                )
+                return True
+        except Exception as e:
+            print(f"Error saving departments: {str(e)}")
+            return False
+
+    async def save_batch(self, departments: List[Department]) -> List[bool]:
+        results = []
+        cursor = self.connection.cursor()
+
+        for department in departments:
+            try:
+                query = """
+                    INSERT INTO departments (id, department)
+                    VALUES (?, ?)
+                """
+                cursor.execute(
+                    query,
+                    department.id,
+                    department.department
+                )
+                results.append(True)
+            except Exception as e:
+                print(f"[ERROR] Failed to save departments {departments.id}: {str(e)}")
+                results.append(False)
+
+        # Commit all changes to the database
+        self.connection.commit()
+        return results
+
+    async def backup(self, format: str = "AVRO") -> str:
+        try:
+            with pyodbc.connect(self.connection_string) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM departments")
+                rows = cursor.fetchall()
+
+                # Define AVRO schema
+                schema = {
+                    "name": "departments",
+                    "type": "record",
+                    "fields": [
+                        {"name": "id", "type": "int"},
+                        {"name": "department", "type": "string"}
+                    ],
+                }
+
+                # Write to AVRO file
+                backup_path = (
+                    f"backups/departments_{datetime.now().strftime('%Y%m%d_%H%M%S')}.avro"
+                )
+                with DataFileWriter(
+                    open(backup_path, "wb"),
+                    DatumWriter(),
+                    avro.schema.parse(str(schema)),
+                ) as writer:
+                    for row in rows:
+                        writer.append(
+                            {
+                                "id": row.id,
+                                "department": row.department
+                            }
+                        )
+
+                return backup_path
+        except Exception as e:
+            print(f"Error creating backup: {str(e)}")
+            raise
+
+    async def restore(self, backup_path: str) -> bool:
+        try:
+            # Read AVRO file
+            with DataFileReader(open(backup_path, "rb"), DatumReader()) as reader:
+                departments = list(reader)
+
+            # Restore to database
+            with pyodbc.connect(self.connection_string) as conn:
+                cursor = conn.cursor()
+                cursor.execute("TRUNCATE TABLE departments")  # Clear existing data
+
+                for dep in departments:
+                    cursor.execute(
+                        """
+                        INSERT INTO departmentss (id, department)
+                        VALUES (?, ?)
+                    """,
+                        (
+                            dep["id"],
+                            dep["department"]
                         ),
                     )
 
