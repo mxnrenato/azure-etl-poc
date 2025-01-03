@@ -11,8 +11,7 @@ class BackupService:
 
     async def create_backup(self, table_name: str) -> dict:
         """
-        Create a backup for a specific table
-        Returns: Dict with backup details
+        Create a backup for a specific table.
         """
         try:
             await self.logger.info(f"Starting backup for table: {table_name}")
@@ -24,20 +23,18 @@ class BackupService:
             await self.logger.info(f"Backup completed successfully: {backup_path}")
 
             return {
-                "status": "success",
-                "backup_id": backup_path,
+                "backup_path": backup_path,
                 "table_name": table_name,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
         except Exception as e:
-            await self.logger.error(f"Error creating backup: {str(e)}")
-            raise BackupError(f"Failed to create backup: {str(e)}")
+            await self.logger.error(f"Error creating backup for {table_name}: {str(e)}")
+            raise BackupError(f"Error creating backup: {str(e)}")
 
-    async def restore_backup(self, backup_id: str, table_name: str) -> dict:
+    async def restore_backup(self, backup_id: str, table_name: str) -> bool:
         """
-        Restore a table from a backup
-        Returns: Dict with restore operation details
+        Restore a table from a backup.
         """
         try:
             await self.logger.info(
@@ -49,27 +46,21 @@ class BackupService:
                 raise RestoreError(f"Failed to restore backup for table: {table_name}")
 
             await self.logger.info("Restore completed successfully")
-
-            return {
-                "status": "success",
-                "backup_id": backup_id,
-                "table_name": table_name,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
+            return True
 
         except Exception as e:
-            await self.logger.error(f"Error restoring backup: {str(e)}")
-            raise RestoreError(f"Failed to restore backup: {str(e)}")
+            await self.logger.error(f"Error restoring backup for {table_name}: {str(e)}")
+            raise RestoreError(f"Error restoring backup: {str(e)}")
 
-    async def list_backups(self, table_name: str) -> list[dict]:
+    async def list_backups(self, table_name: str) -> list:
         """
-        List all backups for a specific table
-        Returns: List of backup details
+        List all backups for a specific table.
         """
         try:
             await self.logger.info(f"Listing backups for table: {table_name}")
             return await self.backup_repository.list_backups(table_name)
 
         except Exception as e:
-            await self.logger.error(f"Error listing backups: {str(e)}")
-            raise BackupError(f"Failed to list backups: {str(e)}")
+            await self.logger.error(f"Error listing backups for {table_name}: {str(e)}")
+            raise BackupError(f"Error listing backups: {str(e)}")
+
