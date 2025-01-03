@@ -7,6 +7,8 @@ from azure.storage.blob import BlobServiceClient
 import pyodbc
 import json
 import os
+from pathlib import Path
+
 from src.domain.exceptions.domain_exceptions import BackupError, RestoreError
 from src.application.interfaces.backup_repository import BackupRepository
 
@@ -80,19 +82,12 @@ class AzureBackupRepository(BackupRepository):
         except Exception as e:
             raise BackupError(f"Failed to ensure container exists: {str(e)}")
 
+    def _ensure_temp_directory(self, file_path: str):
+        """Ensure the directory for the temp file exists."""
+        directory = os.path.dirname(file_path)
+        Path(directory).mkdir(parents=True, exist_ok=True)
+
     async def create_backup(self, table_name: str) -> Optional[str]:
-        """
-        Create a backup of the specified table in AVRO format.
-
-        Args:
-            table_name: Name of the table to backup
-
-        Returns:
-            String: Path to the created backup in Azure Blob Storage
-
-        Raises:
-            BackupError: If backup creation fails
-        """
         try:
             if table_name not in self.SCHEMAS:
                 raise BackupError(f"No schema defined for table: {table_name}")
@@ -103,9 +98,10 @@ class AzureBackupRepository(BackupRepository):
             schema = avro.schema.parse(json.dumps(self.SCHEMAS[table_name]))
             temp_file_path = f"/tmp/{backup_name}"
 
-            with DataFileWriter(
-                open(temp_file_path, "wb"), DatumWriter(), schema
-            ) as writer:
+            # Ensure the temp directory exists
+            self._ensure_temp_directory(temp_file_path)
+
+            with DataFileWriter(open(temp_file_path, "wb"), DatumWriter(), schema) as writer:
                 for record in data:
                     writer.append(self._format_record(record, table_name))
 
