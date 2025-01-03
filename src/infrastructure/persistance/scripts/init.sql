@@ -2,7 +2,7 @@
 CREATE TABLE employees (
     id INT PRIMARY KEY,
     name NVARCHAR(255) NOT NULL,
-    hire_datetime DATETIME NOT NULL,
+    datetime DATETIME NOT NULL,
     department_id INT NOT NULL,
     job_id INT NOT NULL,
     CONSTRAINT FK_Employee_Department FOREIGN KEY (department_id) REFERENCES departments(id),
@@ -22,4 +22,4 @@ CREATE TABLE jobs (
 -- Índices para mejorar el rendimiento
 CREATE INDEX IX_Employee_Department ON employees(department_id);
 CREATE INDEX IX_Employee_Job ON employees(job_id);
-CREATE INDEX IX_Employee_HireDate ON employees(hire_datetime);
+CREATE INDEX IX_Employee_HireDate ON employees(datetime);

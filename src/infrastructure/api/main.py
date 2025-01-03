@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.infrastructure.api.routes import employee_routes, backup_routes
+from src.infrastructure.api.routes.ingest_routes import router as ingest_router
 from src.infrastructure.api.middleware.error_handler import error_handler
 import azure.functions as func
 from azure.functions import AsgiMiddleware
@@ -24,7 +25,7 @@ app.add_middleware(
 )
 
 app.include_router(employee_routes.router, prefix="/api", tags=["employees"])
-
+app.include_router(ingest_router, prefix="/api", tags=["Ingest"])
 app.include_router(backup_routes.router, prefix="/api", tags=["system"])
 
 

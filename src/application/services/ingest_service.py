@@ -3,8 +3,8 @@ from src.domain.repositories.employee_repository import EmployeeRepository
 from src.application.interfaces.storage_service import StorageService
 from src.application.dto.employee_dto import BatchIngestDTO
 from src.domain.exceptions.domain_exceptions import IngestError
-
-from typing import BinaryIO
+import requests
+from typing import BinaryIO, List, Dict
 import pandas as pd
 from datetime import datetime
 from io import StringIO
@@ -20,13 +20,60 @@ class IngestService:
         self.employee_repository = employee_repository
         self.storage_service = storage_service
 
+    async def process_and_store_file(
+        self, file_content: BinaryIO, table_name: str
+    ) -> dict:
+        """
+        Process and store data from a file into the database.
+
+        Args:
+            file_content: The file content to process.
+            table_name: The name of the table to store the data.
+
+        Returns:
+            A summary of the processing result.
+        """
+        try:
+            # Store the raw file in blob storage
+            is_stored = await self.storage_service.store_file(
+                file_content, f"{table_name}.csv"
+            )
+            if not is_stored:
+                raise IngestError("Failed to store the file in Blob Storage.")
+            print(f"File stored in Blob Storage: {table_name}.csv")
+
+            # Reset the file pointer and process the file
+            file_content.seek(0)
+            records, invalid_rows = self._process_file(file_content, table_name)
+
+            # Log invalid rows
+            if invalid_rows:
+                print(
+                    f"Found {len(invalid_rows)} invalid rows while processing '{table_name}'"
+                )
+
+            # Save valid records in the database
+            save_results = await self.employee_repository.save_batch(records)
+            successful = sum(1 for r in save_results if r)
+            failed = len(records) - successful
+
+            return {
+                "processed": len(records) + len(invalid_rows),
+                "successful": successful,
+                "failed": failed + len(invalid_rows),
+                "invalid_rows": len(invalid_rows),
+            }
+        except Exception as e:
+            print(f"Error processing and storing file: {str(e)}")
+            raise IngestError(f"Error processing and storing file: {str(e)}")
+
     async def ingest_employees_file(
         self, file_content: BinaryIO, filename: str
     ) -> dict:
         """Process and store employee data from file"""
         try:
             # Store raw file
-            await self.storage_service.store_file(file_content, f"raw/{filename}")
+            await self.storage_service.store_file(file_content, f"{filename}")
 
             # Process and validate data
             file_content.seek(0)  # Reiniciar el cursor
@@ -56,7 +103,7 @@ class IngestService:
                 Employee(
                     id=emp.id,
                     name=emp.name,
-                    hire_datetime=emp.hire_datetime,
+                    datetime=emp.datetime,
                     department_id=emp.department_id,
                     job_id=emp.job_id,
                 )
@@ -75,18 +122,33 @@ class IngestService:
             raise IngestError(f"Error during batch ingestion: {str(e)}")
 
     def _process_file(
-        self, file_content: BinaryIO
-    ) -> tuple[list[Employee], list[dict]]:
-        """Process and validate employee data from CSV file"""
+        self, file_content: BinaryIO, table_name: str
+    ) -> tuple[List[Employee], List[Dict]]:
+        """Process and validate data for the given table"""
         try:
-
             file_content.seek(0)
-            df = pd.read_csv(StringIO(file_content.read().decode("utf-8")))
 
-            required_columns = ["id", "name", "datetime", "department_id", "job_id"]
+            # Define las columnas requeridas por tabla
+            required_columns_by_table = {
+                "employees": ["id", "name", "datetime", "department_id", "job_id"],
+            }
+
+            if table_name not in required_columns_by_table:
+                raise ValueError(f"Unknown table: {table_name}")
+
+            required_columns = required_columns_by_table[table_name]
+
+            # Lee el archivo CSV y asigna nombres de columnas si no existen
+            df = pd.read_csv(
+                StringIO(file_content.read().decode("utf-8")),
+                names=required_columns,
+                header=None,  # Indica que el CSV no tiene encabezados
+            )
+
+            # Verifica que todas las columnas requeridas estén presentes
             if not all(col in df.columns for col in required_columns):
                 raise ValueError(
-                    "Archivo CSV no contiene todas las columnas requeridas"
+                    f"CSV file does not contain all required columns for table '{table_name}'"
                 )
 
             employees = []
@@ -94,53 +156,103 @@ class IngestService:
 
             for _, row in df.iterrows():
                 try:
-
-                    if (
-                        (
-                            pd.isnull(row["id"])
-                            or not isinstance(row["id"], (int, float))
-                        )
-                        or (
-                            pd.isnull(row["name"])
-                            or not isinstance(row["name"], str)
-                            or not row["name"].strip()
-                        )
-                        or (
-                            pd.isnull(row["datetime"])
-                            or not isinstance(row["datetime"], str)
-                        )
-                        or (
-                            pd.isnull(row["department_id"])
-                            or not isinstance(row["department_id"], (int, float))
-                        )
-                        or (
-                            pd.isnull(row["job_id"])
-                            or not isinstance(row["job_id"], (int, float))
-                        )
-                    ):
-                        raise ValueError("Invalid or missing fields in row")
-
-                    id_value = int(row["id"])
-                    name_value = row["name"].strip()
-                    datetime_value = datetime.fromisoformat(
-                        row["datetime"].replace("Z", "")
-                    )
-                    department_id_value = int(row["department_id"])
-                    job_id_value = int(row["job_id"])
-
-                    employees.append(
-                        Employee(
-                            id=id_value,
-                            name=name_value,
-                            hire_datetime=datetime_value,
-                            department_id=department_id_value,
-                            job_id=job_id_value,
-                        )
-                    )
-                except Exception as e:
-                    logger.warning(f"Invalid row skipped: {row}. Error: {str(e)}")
+                    # Validación y creación de instancia de Employee
+                    employee_data = self._validate_employee_row(row)
+                    employee = Employee(**employee_data)
+                    employees.append(employee)
+                except ValueError as e:
                     invalid_rows.append(row.to_dict())
+                    print(f"Validation failed: {str(e)}")
 
             return employees, invalid_rows
         except Exception as e:
-            raise ValueError(f"Error al procesar el archivo: {str(e)}")
+            raise ValueError(f"Error processing file: {str(e)}")
+
+    def _validate_employee_row(self, row: pd.Series) -> dict:
+        """Validate and convert an employee row"""
+        if (
+            pd.isnull(row["id"])
+            or not isinstance(row["id"], (int, float))
+            or row["id"] <= 0
+        ):
+            raise ValueError("Invalid or missing 'id'")
+        if (
+            pd.isnull(row["name"])
+            or not isinstance(row["name"], str)
+            or not row["name"].strip()
+        ):
+            raise ValueError("Invalid or missing 'name'")
+        if (
+            pd.isnull(row["datetime"])
+            or not isinstance(row["datetime"], str)
+            or not self._is_valid_iso_format(row["datetime"])
+        ):
+            raise ValueError("Invalid or missing 'datetime'")
+        if (
+            pd.isnull(row["department_id"])
+            or not isinstance(row["department_id"], (int, float))
+            or row["department_id"] <= 0
+        ):
+            raise ValueError("Invalid or missing 'department_id'")
+        if (
+            pd.isnull(row["job_id"])
+            or not isinstance(row["job_id"], (int, float))
+            or row["job_id"] <= 0
+        ):
+            raise ValueError("Invalid or missing 'job_id'")
+
+        return {
+            "id": int(row["id"]),
+            "name": row["name"].strip(),
+            "datetime": datetime.fromisoformat(row["datetime"].replace("Z", "")),
+            "department_id": int(row["department_id"]),
+            "job_id": int(row["job_id"]),
+        }
+
+    def _is_valid_iso_format(self, date_string: str) -> bool:
+        """Check if a string is a valid ISO 8601 datetime"""
+        try:
+            datetime.fromisoformat(date_string.replace("Z", ""))
+            return True
+        except ValueError:
+            return False
+
+    def _validate_department_row(self, row: pd.Series) -> dict:
+        """Validate and convert a department row"""
+        if (
+            pd.isnull(row["id"])
+            or not isinstance(row["id"], (int, float))
+            or row["id"] <= 0
+        ):
+            raise ValueError("Invalid or missing 'id'")
+        if (
+            pd.isnull(row["department"])
+            or not isinstance(row["department"], str)
+            or not row["department"].strip()
+        ):
+            raise ValueError("Invalid or missing 'department'")
+
+        return {
+            "id": int(row["id"]),
+            "department": row["department"].strip(),
+        }
+
+    def _validate_job_row(self, row: pd.Series) -> dict:
+        """Validate and convert a job row"""
+        if (
+            pd.isnull(row["id"])
+            or not isinstance(row["id"], (int, float))
+            or row["id"] <= 0
+        ):
+            raise ValueError("Invalid or missing 'id'")
+        if (
+            pd.isnull(row["job"])
+            or not isinstance(row["job"], str)
+            or not row["job"].strip()
+        ):
+            raise ValueError("Invalid or missing 'job'")
+
+        return {
+            "id": int(row["id"]),
+            "job": row["job"].strip(),
+        }
