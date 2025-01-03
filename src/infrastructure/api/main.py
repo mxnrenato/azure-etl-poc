@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.infrastructure.api.routes import employee_routes, backup_routes
+from src.infrastructure.api.routes import employee_routes, backup_routes, metrics_routes
 from src.infrastructure.api.routes.ingest_routes import router as ingest_router
 from src.infrastructure.api.middleware.error_handler import error_handler
 import azure.functions as func
@@ -30,7 +30,7 @@ container.wire(modules=[backup_routes])
 
 app.include_router(ingest_router, prefix="/api", tags=["Ingest"])
 app.include_router(backup_routes.router, prefix="/api", tags=["backup"])
-
+app.include_router(metrics_routes.router, prefix="/api", tags=["Metrics"])
 
 def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
     return AsgiMiddleware(app).handle(req, context)
