@@ -1,24 +1,48 @@
-from dotenv import load_dotenv
-import os
 import pyodbc
-
-load_dotenv()
-AZURE_SQL_CONNECTION_STRING = os.getenv("AZURE_SQL_CONNECTION_STRING")
-
+from contextlib import contextmanager
+from settings import AZURE_SQL_CONNECTION_STRING
 
 def get_db_connection():
     """
-    Creates and returns a new database connection using the connection string from the environment.
+    Creates and returns a new database connection using the connection string from settings.
     """
-    connection_string = os.getenv(AZURE_SQL_CONNECTION_STRING)
-    if not connection_string:
-        raise ValueError("Database connection string is not set in the environment.")
+    if not AZURE_SQL_CONNECTION_STRING:
+        raise ValueError("Database connection string is not available in settings.")
 
     try:
-        conn = pyodbc.connect(connection_string)
+        conn = pyodbc.connect(AZURE_SQL_CONNECTION_STRING)
         return conn
     except Exception as e:
         raise ConnectionError(f"Failed to connect to the database: {str(e)}")
 
+@contextmanager
+def get_db_cursor():
+    """
+    Context manager that provides a database cursor and handles connection cleanup.
+    Usage:
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT * FROM table")
+            rows = cursor.fetchall()
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        yield cursor
+        conn.commit()
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise e
+    finally:
+        if conn:
+            conn.close()
 
-get_db_connection()
+# Optional: Verify connection on module load
+if __name__ == "__main__":
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("SELECT 1")
+        print("Database connection test successful!")
+    except Exception as e:
+        print(f"Database connection test failed: {str(e)}")
