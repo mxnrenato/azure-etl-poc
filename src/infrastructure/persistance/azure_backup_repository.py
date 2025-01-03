@@ -101,7 +101,9 @@ class AzureBackupRepository(BackupRepository):
             # Ensure the temp directory exists
             self._ensure_temp_directory(temp_file_path)
 
-            with DataFileWriter(open(temp_file_path, "wb"), DatumWriter(), schema) as writer:
+            with DataFileWriter(
+                open(temp_file_path, "wb"), DatumWriter(), schema
+            ) as writer:
                 for record in data:
                     writer.append(self._format_record(record, table_name))
 

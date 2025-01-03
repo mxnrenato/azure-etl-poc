@@ -5,6 +5,7 @@ from dependency_injector.wiring import Provide, inject
 
 router = APIRouter()
 
+
 @router.post("/backup/{table_name}")
 @inject
 async def create_backup(
@@ -16,6 +17,7 @@ async def create_backup(
         return {"status": "success", "details": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/restore/{table_name}")
 @inject

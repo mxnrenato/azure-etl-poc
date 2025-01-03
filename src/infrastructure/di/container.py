@@ -16,7 +16,7 @@ from settings import (
     AZURE_STORAGE_CONNECTION_STRING,
     AZURE_BLOB_CONTAINER_ROW_DATA,
     AZURE_BLOB_CONTAINER_BACKUPS,
-    AZURE_SQL_CONNECTION_STRING
+    AZURE_SQL_CONNECTION_STRING,
 )
 
 
@@ -50,7 +50,7 @@ class Container(containers.DeclarativeContainer):
         employee_repository=employee_repository,
         storage_service=storage_service,
     )
-   # Repositorio de respaldos
+    # Repositorio de respaldos
     backup_repository = providers.Singleton(
         AzureBackupRepository,
         blob_connection_string=config.azure_storage_connection_string,

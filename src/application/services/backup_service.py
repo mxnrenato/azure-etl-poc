@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+
+
 from src.application.interfaces.backup_repository import BackupRepository
 from src.application.interfaces.logger import Logger
 from src.domain.exceptions.domain_exceptions import BackupError, RestoreError
@@ -16,6 +18,7 @@ class BackupService:
         try:
             await self.logger.info(f"Starting backup for table: {table_name}")
 
+            # Delegate to the repository
             backup_path = await self.backup_repository.create_backup(table_name)
             if not backup_path:
                 raise BackupError(f"Failed to create backup for table: {table_name}")
@@ -41,6 +44,7 @@ class BackupService:
                 f"Starting restore for table: {table_name} from backup: {backup_id}"
             )
 
+            # Delegate to the repository
             success = await self.backup_repository.restore_backup(backup_id, table_name)
             if not success:
                 raise RestoreError(f"Failed to restore backup for table: {table_name}")
