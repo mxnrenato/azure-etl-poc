@@ -7,7 +7,7 @@ from src.application.interfaces.storage_service import StorageService
 from src.application.dto.employee_dto import BatchIngestDTO
 from src.domain.exceptions.domain_exceptions import IngestError
 import requests
-from typing import BinaryIO, List, Dict
+from typing import BinaryIO, List, Dict, Tuple
 import pandas as pd
 from datetime import datetime
 from io import StringIO
@@ -18,10 +18,11 @@ logger = logging.getLogger(__name__)
 
 class IngestService:
     def __init__(
-        self, employee_repository: EmployeeRepository, department_repository: DepartmentRepository, storage_service: StorageService
+        self, employee_repository: EmployeeRepository, department_repository: DepartmentRepository, job_repository: JobRepository,storage_service: StorageService
     ):
         self.employee_repository = employee_repository
         self.department_repository = department_repository
+        self.job_repository = job_repository
         self.storage_service = storage_service
 
     async def process_and_store_file(
@@ -63,6 +64,10 @@ class IngestService:
                 failed = len(records) - successful
             elif table_name == "departments":
                 save_results = await self.department_repository.save_batch(records)
+                successful = sum(1 for r in save_results if r)
+                failed = len(records) - successful
+            elif table_name == "jobs":
+                save_results = await self.job_repository.save_batch(records)
                 successful = sum(1 for r in save_results if r)
                 failed = len(records) - successful
 
