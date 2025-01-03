@@ -1,166 +1,192 @@
-# Azure ETL POC
+# Azure Data Processing System
 
-## Descripción
-Proyecto de prueba de concepto (POC) para un proceso ETL utilizando servicios de Azure, implementado con Python y FastAPI siguiendo los principios de Clean Architecture.
+## Description
+Proof of Concept (POC) for a data processing system using Azure services, implemented with Python and FastAPI following Clean Architecture principles. The system handles employee data management with Azure Blob Storage for file storage and AVRO backups, and Azure SQL Database for structured data persistence.
 
-## Arquitectura del Proyecto
+## System Architecture
 
-Este proyecto implementa los principios de Arquitectura Limpia (Clean Architecture) con una estructura clara de capas:
+This project implements Clean Architecture principles with a clear layer structure:
 
-- **Domain Layer**: Contiene las entidades del negocio y reglas empresariales
-- **Application Layer**: Implementa los casos de uso de la aplicación
-- **Infrastructure Layer**: Maneja detalles técnicos y implementaciones externas
-  - API
-  - Base de datos
-  - Servicios externos
-  - Logging
-  - Persistencia
+- **Domain Layer**: Contains business entities and rules
+  - Employee, Department, and Job entities
+  - Repository interfaces
+  - Business rules and validations
 
-La arquitectura está diseñada siguiendo los principios SOLID y mantiene una clara separación de responsabilidades.
+- **Application Layer**: Implements use cases
+  - Data ingestion processing
+  - Backup management
+  - Analytics and metrics
 
-## Prerrequisitos
+- **Infrastructure Layer**: Handles technical implementations
+  - FastAPI endpoints
+  - Azure SQL Database integration
+  - Azure Blob Storage operations
+  - Azure Key Vault security
+
+## Features
+
+### 1. Data Ingestion
+- Batch processing of CSV files
+- Data validation and transformation
+- Storage of raw files in Blob Storage
+- Structured data persistence in SQL Database
+
+### 2. Backup System
+- AVRO format backups of database tables
+- Secure storage in Azure Blob Storage
+- Point-in-time recovery capabilities
+
+### 3. Analytics & Metrics
+- Quarterly hiring analytics
+- Departmental performance metrics
+- Custom data exploration
+
+## API Endpoints
+
+### Ingest
+```http
+POST /api/ingest/{table_name}
+Description: Process and ingest data from file in batches
+```
+
+### Backup Operations
+```http
+POST /api/backup/{table_name}
+Description: Create Backup
+
+POST /api/restore/{table_name}
+Description: Restore Backup
+```
+
+### Metrics
+```http
+GET /api/metrics/quarterly-hires-2021
+Description: Get employee hiring data by quarter for 2021
+
+GET /api/metrics/departments-above-mean-2021
+Description: Get departments exceeding average hiring rate
+```
+
+## Project Structure
+```
+src/
+├── application/
+│   ├── interfaces/
+│   │   └── storage_service.py
+│   └── services/
+│       └── ingest_service.py
+├── domain/
+│   ├── entities/
+│   │   ├── employee.py
+│   │   ├── department.py
+│   │   └── job.py
+│   └── repositories/
+│       ├── employee_repository.py
+│       ├── department_repository.py
+│       └── job_repository.py
+└── infrastructure/
+    ├── api/
+    │   └── routes/
+    │       ├── ingest_routes.py
+    │       ├── backup_routes.py
+    │       └── metrics_routes.py
+    ├── database/
+    │   └── connection.py
+    └── storage/
+        └── azure_blob.py
+```
+
+## Prerequisites
 
 - Python 3.8+
+- Azure subscription
+- Azure CLI
 - pip
 - virtualenv
-- Azure CLI (para autenticación con Key Vault)
-- Docker (opcional, para ejecución containerizada)
 
-## Configuración del Entorno
+## Environment Setup
 
-1. Clonar el repositorio:
+1. Clone the repository:
 ```bash
-git clone [URL-del-repositorio]
-cd azure-etl-poc
+git clone [repository-url]
+cd [project-directory]
 ```
 
-2. Crear y activar entorno virtual:
+2. Create and activate virtual environment:
 ```bash
 python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. Instalar dependencias:
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Configurar variables de entorno:
+4. Configure environment variables:
 ```bash
 cp .env.example .env
 ```
 
-5. Configurar Azure Key Vault:
-   - Asegúrate de tener acceso al Key Vault
-   - Actualiza AZURE_KEY_VAULT_URL en tu .env
-   - Autentica con Azure:
-   ```bash
-   az login
-   ```
+## Environment Variables
+```env
+AZURE_KEY_VAULT_URL=your-key-vault-url
+AZURE_STORAGE_CONNECTION_STRING=your-storage-connection
+AZURE_SQL_CONNECTION_STRING=your-sql-connection
+AZURE_BLOB_CONTAINER_ROW_DATA=raw-data
+AZURE_BLOB_CONTAINER_BACKUPS=backups
+```
 
-## Ejecución del Proyecto
+## Running the Project
 
-### Ejecución Local
-
-1. Activar el entorno virtual (si no está activado):
+### Local Development
 ```bash
-source venv/bin/activate  # En Windows: venv\Scripts\activate
+uvicorn src.infrastructure.api.main:app --reload
 ```
 
-2. Iniciar el servidor FastAPI:
+### Docker
 ```bash
-uvicorn src.infrastructure.api.main:app --host 0.0.0.0 --port 8000
+docker build -t azure-data-processor .
+docker run -p 8000:8000 --env-file .env azure-data-processor
 ```
 
-El servidor estará disponible en `http://0.0.0.0:8000/api/docs#/`
+## Documentation
+- Swagger UI: `http://localhost:8000/api/docs`
+- ReDoc: `http://localhost:8000/api/redoc`
 
-### Ejecución con Docker
+## Security
 
-1. Construir la imagen:
-```bash
-docker build -t azure-etl-poc .
-```
+- Credentials managed through Azure Key Vault
+- Environment variables for local development
+- Azure Managed Identity integration
+- Secure API configuration
 
-2. Ejecutar el contenedor:
-```bash
-docker run -d \
-  --name azure-etl-poc \
-  -p 8000:8000 \
-  --env-file .env \
-  azure-etl-poc
-```
-
-3. Verificar los logs:
-```bash
-docker logs azure-etl-poc
-```
-
-## Gestión de Secretos
-
-El proyecto utiliza Azure Key Vault para la gestión segura de secretos:
-
-1. Variables almacenadas en Key Vault:
-   - Connection strings
-   - Claves de API
-   - Configuraciones sensibles
-
-2. Variables locales (solo desarrollo):
-   - Definidas en .env
-   - Ejemplo de estructura en .env.example
-   - No se comprometen en el repositorio
-
-## Documentación API
-
-- Swagger UI: `http://0.0.0.0:8000/api/docs#/`
-- ReDoc: `http://0.0.0.0:8000/api/redoc`
-
-## Estructura del Proyecto
-
-```
-azure-etl-poc/
-├── src/
-│   ├── application/      # Casos de uso
-│   ├── domain/          # Entidades y reglas de negocio
-│   ├── infrastructure/  # Implementaciones técnicas
-│   │   ├── api/        # Endpoints FastAPI
-│   │   ├── db/         # Configuración de base de datos
-│   │   ├── logging/    # Configuración de logs
-│   │   └── services/   # Servicios externos
-│   └── functions/      # Funciones Azure
-├── tests/              # Tests unitarios y de integración
-├── .env               # Variables de entorno (no versionado)
-├── .env.example       # Template de variables de entorno
-├── Dockerfile         # Configuración de Docker
-├── requirements.txt   # Dependencias del proyecto
-└── README.md         # Este archivo
-```
-
-## Configuración de Desarrollo
-
-### Linting y Formato
-```bash
-flake8 .
-```
-
-### Tests
+## Testing
 ```bash
 pytest
 ```
 
-## Contribución
+## Development Guidelines
 
-1. Fork el repositorio
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+### Code Style
+```bash
+flake8 .
+black .
+```
 
-## Soporte
+### Git Workflow
+1. Create feature branch
+2. Implement changes
+3. Run tests
+4. Submit pull request
 
-Para reportar problemas o solicitar ayuda:
-1. Abrir un issue en el repositorio
-2. Contactar al equipo de desarrollo
+## Support
 
-## Licencia
+For issues and feature requests:
+1. Check existing issues
+2. Create detailed bug report
+3. Contact development team
 
-[Tipo de Licencia] - ver archivo LICENSE para más detalles
+## License
+
+This project is licensed under [MIT] - see LICENSE file for details
