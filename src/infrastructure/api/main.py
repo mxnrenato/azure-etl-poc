@@ -28,7 +28,6 @@ app.add_middleware(
 container = Container()
 container.wire(modules=[backup_routes])
 
-app.include_router(employee_routes.router, prefix="/api", tags=["employees"])
 app.include_router(ingest_router, prefix="/api", tags=["Ingest"])
 app.include_router(backup_routes.router, prefix="/api", tags=["backup"])
 
