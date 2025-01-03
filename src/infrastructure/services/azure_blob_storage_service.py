@@ -1,32 +1,17 @@
-from src.application.interfaces.storage_service import StorageService
 from azure.storage.blob import BlobServiceClient
+from abc import ABC, abstractmethod
 from typing import BinaryIO
+from src.application.interfaces.storage_service import StorageService
 
 
-class AzureBlobStorageService(StorageService):
-    def __init__(self, connection_string: str):
+class AzureBlobStorageServiceInfrastructure(StorageService):
+    def __init__(self, connection_string: str, container_name: str):
         self.blob_service_client = BlobServiceClient.from_connection_string(
             connection_string
         )
-        self.container_name = "etl-data"
-
-    def sanitize_blob_name(filename: str) -> str:
-        # Remueve caracteres no válidos
-        invalid_chars = ["\\", "/", "#", "?"]
-        for char in invalid_chars:
-            filename = filename.replace(char, "")
-
-        # Reemplaza espacios con guiones bajos o remueve
-        filename = filename.replace(" ", "_")
-
-        # Verifica si termina con un punto y lo remueve
-        if filename.endswith("."):
-            filename = filename[:-1]
-
-        return filename
+        self.container_name = container_name
 
     async def store_file(self, file_content: BinaryIO, filename: str) -> bool:
-        """Store file in Azure Blob Storage"""
         try:
             container_client = self.blob_service_client.get_container_client(
                 self.container_name
@@ -43,11 +28,17 @@ class AzureBlobStorageService(StorageService):
             return False
 
     async def retrieve_file(self, filename: str) -> BinaryIO:
+        """Retrieve file from Azure Blob Storage"""
         try:
-            blob_client = self.blob_service_client.get_blob_client(
-                container=self.container_name, blob=filename
+            container_client = self.blob_service_client.get_container_client(
+                self.container_name
             )
-            return blob_client.download_blob().readall()
+            blob_client = container_client.get_blob_client(filename)
+            blob_data = blob_client.download_blob()
+            print(
+                f"[INFO] File '{filename}' successfully retrieved from container '{self.container_name}'."
+            )
+            return blob_data.content_as_bytes()
         except Exception as e:
-            print(f"Error retrieving file: {str(e)}")
+            print(f"[ERROR] Error retrieving file '{filename}': {str(e)}")
             raise

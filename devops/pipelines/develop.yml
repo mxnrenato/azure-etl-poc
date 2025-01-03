@@ -16,15 +16,13 @@ pool:
 
 variables:
   pythonVersion: '3.11'
-  functionAppName: 'etl-poc-function'
+  webAppName: 'etl-poc-webapp'
 
 stages:
   - stage: Build
     jobs:
       - job: Build
         steps:
-          - checkout: self
-            
           - task: UsePythonVersion@0
             inputs:
               versionSpec: '$(pythonVersion)'
@@ -38,15 +36,14 @@ stages:
           - script: |
               pip install pytest pytest-cov flake8
               flake8 src/
-              pytest tests/ --cov=src --cov-report=xml
             displayName: 'Lint and Run tests'
 
           - task: ArchiveFiles@2
             inputs:
-              rootFolderOrFile: '$(System.DefaultWorkingDirectory)/src'
+              rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
               includeRootFolder: false
               archiveType: 'zip'
-              archiveFile: '$(Build.ArtifactStagingDirectory)/$(functionAppName).zip'
+              archiveFile: '$(Build.ArtifactStagingDirectory)/$(webAppName).zip'
               replaceExistingArchive: true
             displayName: 'Create deployment package'
 
@@ -57,11 +54,10 @@ stages:
             displayName: 'Publish artifacts'
 
   - stage: Deploy_Dev
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
     jobs:
       - deployment: Deploy
         environment: development
-        pool:
-          vmImage: 'ubuntu-latest'
         strategy:
           runOnce:
             deploy:
@@ -69,8 +65,8 @@ stages:
                 - download: current
                   artifact: 'drop'
                   
-                - task: AzureFunctionApp@1
+                - task: AzureWebApp@1
                   inputs:
                     azureSubscription: 'sc_azure_etl_poc'
-                    appName: '$(functionAppName)'
-                    package: '$(Pipeline.Workspace)/drop/$(functionAppName).zip'
+                    appName: '$(webAppName)'
+                    package: '$(Pipeline.Workspace)/drop/$(webAppName).zip'

@@ -2,6 +2,8 @@
 venv/
 .venv/
 __pycache__/
+.env
+.github/
 # IDE Configurations
 .vscode/
 

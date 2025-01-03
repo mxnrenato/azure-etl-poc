@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
-from application.services.ingest_service import IngestService
-from application.dto.employee_dto import BatchIngestDTO
-from infrastructure.di.container import Container
+from src.application.services.ingest_service import IngestService
+from src.application.dto.employee_dto import BatchIngestDTO
+from src.infrastructure.di.container import Container
 
 router = APIRouter()
 
@@ -14,8 +14,8 @@ async def upload_employees(
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files are allowed")
 
-    result = await ingest_service.ingest_employees_file(file.file, file.filename)
-    return result
+    await ingest_service.store_employees_file(file.file, file.filename)
+    return {"message": "File uploaded successfully"}
 
 
 @router.post("/batch", summary="Ingest batch of employee records")
