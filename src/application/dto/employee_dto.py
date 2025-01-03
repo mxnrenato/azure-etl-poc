@@ -6,7 +6,7 @@ from typing import List
 class EmployeeDTO(BaseModel):
     id: int
     name: str
-    hire_datetime: datetime
+    datetime: datetime
     department_id: int
     job_id: int
 

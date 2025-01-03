@@ -6,7 +6,7 @@ from datetime import datetime
 class Employee:
     id: int
     name: str
-    hire_datetime: datetime
+    datetime: datetime
     department_id: int = -1
     job_id: int = -1
 

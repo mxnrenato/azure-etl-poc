@@ -25,7 +25,7 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
                     Employee(
                         id=row.id,
                         name=row.name,
-                        hire_datetime=row.hire_datetime,
+                        datetime=row.datetime,
                         department_id=row.department_id,
                         job_id=row.job_id,
                     )
@@ -47,7 +47,7 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
                     Employee(
                         id=row.id,
                         name=row.name,
-                        hire_datetime=row.hire_datetime,
+                        datetime=row.datetime,
                         department_id=row.department_id,
                         job_id=row.job_id,
                     )
@@ -65,7 +65,7 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
             with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
                 cursor.execute(
-                    "SELECT * FROM employees WHERE hire_datetime BETWEEN ? AND ?",
+                    "SELECT * FROM employees WHERE datetime BETWEEN ? AND ?",
                     start_date,
                     end_date,
                 )
@@ -75,7 +75,7 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
                     Employee(
                         id=row.id,
                         name=row.name,
-                        hire_datetime=row.hire_datetime,
+                        datetime=row.datetime,
                         department_id=row.department_id,
                         job_id=row.job_id,
                     )
@@ -92,13 +92,13 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
                 cursor = conn.cursor()
                 cursor.execute(
                     """
-                    INSERT INTO employees (id, name, hire_datetime, department_id, job_id)
+                    INSERT INTO employees (id, name, datetime, department_id, job_id)
                     VALUES (?, ?, ?, ?, ?)
                 """,
                     (
                         employee.id,
                         employee.name,
-                        employee.hire_datetime,
+                        employee.datetime,
                         employee.department_id,
                         employee.job_id,
                     ),
@@ -110,28 +110,31 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
 
     async def save_batch(self, employees: List[Employee]) -> List[bool]:
         results = []
-        with pyodbc.connect(self.connection_string) as conn:
-            cursor = conn.cursor()
-            for employee in employees:
-                try:
-                    cursor.execute(
-                        """
-                        INSERT INTO employees (id, name, hire_datetime, department_id, job_id)
-                        VALUES (?, ?, ?, ?, ?)
-                    """,
-                        (
-                            employee.id,
-                            employee.name,
-                            employee.hire_datetime,
-                            employee.department_id,
-                            employee.job_id,
-                        ),
-                    )
-                    results.append(True)
-                except Exception as e:
-                    print(f"Error in batch save: {str(e)}")
-                    results.append(False)
+        cursor = self.connection.cursor()
+
+        for employee in employees:
+            try:
+                query = """
+                    INSERT INTO employees (id, name, datetime, department_id, job_id)
+                    VALUES (?, ?, ?, ?, ?)
+                """
+                cursor.execute(
+                    query,
+                    employee.id,
+                    employee.name,
+                    employee.datetime,
+                    employee.department_id,
+                    employee.job_id,
+                )
+                results.append(True)
+            except Exception as e:
+                print(f"[ERROR] Failed to save employee {employee.id}: {str(e)}")
+                results.append(False)
+
+        # Commit all changes to the database
+        self.connection.commit()
         return results
+
 
     async def backup(self, format: str = "AVRO") -> str:
         try:
@@ -147,7 +150,7 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
                     "fields": [
                         {"name": "id", "type": "int"},
                         {"name": "name", "type": "string"},
-                        {"name": "hire_datetime", "type": "string"},
+                        {"name": "datetime", "type": "string"},
                         {"name": "department_id", "type": "int"},
                         {"name": "job_id", "type": "int"},
                     ],
@@ -167,7 +170,7 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
                             {
                                 "id": row.id,
                                 "name": row.name,
-                                "hire_datetime": row.hire_datetime.isoformat(),
+                                "datetime": row.datetime.isoformat(),
                                 "department_id": row.department_id,
                                 "job_id": row.job_id,
                             }
@@ -192,13 +195,13 @@ class AzureSQLEmployeeRepository(EmployeeRepository):
                 for emp in employees:
                     cursor.execute(
                         """
-                        INSERT INTO employees (id, name, hire_datetime, department_id, job_id)
+                        INSERT INTO employees (id, name, datetime, department_id, job_id)
                         VALUES (?, ?, ?, ?, ?)
                     """,
                         (
                             emp["id"],
                             emp["name"],
-                            emp["hire_datetime"],
+                            emp["datetime"],
                             emp["department_id"],
                             emp["job_id"],
                         ),
